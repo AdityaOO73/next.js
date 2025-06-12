@@ -717,5 +717,10 @@
   "716": "NEXT_DEVTOOLS_SIMULATED_ERROR",
   "717": "Unsupported environment condition \"%s\" and react condition \"%s\". This is a bug in Next.js.",
   "718": "Invariant: projectDir is required for node runtime",
-  "719": "Failed to get source map for '%s'. This is a bug in Next.js"
+  "719": "Failed to get source map for '%s'. This is a bug in Next.js",
+  "720": "Route %s used %s inside \\`\"use cache\"\\` or \\`unstable_cache\\`. Support for this API inside cache scopes is planned for a future version of Next.js.",
+  "721": "%s must not be used within a client component. Next.js should be preventing it from being included in client components statically, but did not in this case.",
+  "722": "Route %s used %s in Pages Router. This API is only available within App Router.",
+  "723": "\\`unstable_rootParams\\` must not be used within a client component. Next.js should be preventing it from being included in client components statically, but did not in this case.",
+  "724": "Missing workStore in %s"
 }
