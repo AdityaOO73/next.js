@@ -68,6 +68,15 @@ export interface RequestStore extends CommonWorkUnitStore {
   prerenderPhase?: boolean
 }
 
+export type PrerenderDynamicApis = {
+  /** Indicates whether `params` can be accessed in a dynamic prefetch. */
+  params: boolean
+  /** Indicates whether `params` can be accessed in a dynamic prefetch. */
+  searchParams: boolean
+  readonly cookies: ReadonlyRequestCookies | null
+  readonly draftMode: DraftModeProvider | null
+}
+
 /**
  * The Prerender store is for tracking information related to prerenders.
  *
@@ -108,6 +117,8 @@ export interface PrerenderStoreModern extends CommonWorkUnitStore {
   readonly dynamicTracking: null | DynamicTrackingState
 
   readonly rootParams: Params
+
+  readonly allowedDynamicApis: PrerenderDynamicApis | null
 
   /**
    * When true, the page is prerendered as a fallback shell, while allowing any

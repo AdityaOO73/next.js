@@ -92,7 +92,15 @@ export function cookies(): Promise<ReadonlyRequestCookies> {
     if (workUnitStore) {
       switch (workUnitStore.type) {
         case 'prerender':
-          return makeHangingCookies(workUnitStore)
+          if (workUnitStore.allowedDynamicApis?.cookies) {
+            // a dynamic prefetch that allows cookies
+            return makeUntrackedExoticCookies(
+              workUnitStore.allowedDynamicApis.cookies
+            )
+          } else {
+            // dynamicIO Prerender
+            return makeHangingCookies(workUnitStore)
+          }
         case 'prerender-client':
           const exportName = '`cookies`'
           throw new InvariantError(

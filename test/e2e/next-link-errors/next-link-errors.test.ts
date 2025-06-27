@@ -91,7 +91,7 @@ describe('next-link', () => {
       // TODO(veil): https://linear.app/vercel/issue/NDX-554/hide-the-anonymous-frames-which-are-between-2-ignored-frames
       await expect(browser).toDisplayRedbox(`
        {
-         "description": "Failed prop type: The prop \`prefetch\` expects a \`boolean | "auto"\` in \`<Link>\`, but got \`string\` instead.
+         "description": "Failed prop type: The prop \`prefetch\` expects a \`boolean | "auto" | "unstable_forceStale"\` in \`<Link>\`, but got \`string\` instead.
        Open your browser's console to view the Component stack trace.",
          "environmentLabel": null,
          "label": "Runtime Error",

@@ -28,6 +28,7 @@ import {
 } from './cache'
 import type { RouteCacheKey } from './cache-key'
 import { getCurrentCacheVersion, PrefetchPriority } from '../segment-cache'
+import { InvariantError } from '../../../shared/lib/invariant-error'
 
 const scheduleMicrotask =
   typeof queueMicrotask === 'function'
@@ -59,9 +60,9 @@ export type PrefetchTask = {
 
   /**
    * Whether to prefetch dynamic data, in addition to static data. This is
-   * used by <Link prefetch={true}>.
+   * used by `<Link prefetch={true}>`.
    */
-  includeDynamicData: boolean
+  includeDynamicData: IncludeDynamicData
 
   /**
    * sortId is an incrementing counter
@@ -180,6 +181,8 @@ let didScheduleMicrotask = false
 // priority at a time. We reserve special network bandwidth for this task only.
 let mostRecentlyHoveredLink: PrefetchTask | null = null
 
+export type IncludeDynamicData = null | 'full' | 'dynamic'
+
 /**
  * Initiates a prefetch task for the given URL. If a prefetch for the same URL
  * is already in progress, this will bump it to the top of the queue.
@@ -190,12 +193,12 @@ let mostRecentlyHoveredLink: PrefetchTask | null = null
  * @param key The RouteCacheKey to prefetch.
  * @param treeAtTimeOfPrefetch The app's current FlightRouterState
  * @param includeDynamicData Whether to prefetch dynamic data, in addition to
- * static data. This is used by <Link prefetch={true}>.
+ * static data. This is used by `<Link prefetch={true}>`.
  */
 export function schedulePrefetchTask(
   key: RouteCacheKey,
   treeAtTimeOfPrefetch: FlightRouterState,
-  includeDynamicData: boolean,
+  includeDynamicData: IncludeDynamicData,
   priority: PrefetchPriority,
   onInvalidate: null | (() => void)
 ): PrefetchTask {
@@ -243,7 +246,7 @@ export function cancelPrefetchTask(task: PrefetchTask): void {
 export function reschedulePrefetchTask(
   task: PrefetchTask,
   treeAtTimeOfPrefetch: FlightRouterState,
-  includeDynamicData: boolean,
+  includeDynamicData: IncludeDynamicData,
   priority: PrefetchPriority
 ): void {
   // Bump the prefetch task to the top of the queue, as if it were a fresh
@@ -497,8 +500,9 @@ function pingRootRouteTree(
       // a route. Currently we've only implemented the main one: per-segment,
       // static-data only.
       //
-      // There's also <Link prefetch={true}> which prefetches both static *and*
-      // dynamic data. Similarly, we need to fallback to the old, per-page
+      // There's also `<Link prefetch={true}>`
+      // which prefetch both static *and* dynamic data.
+      // Similarly, we need to fallback to the old, per-page
       // behavior if PPR is disabled for a route (via the incremental opt-in).
       //
       // Those cases will be handled here.
@@ -545,13 +549,7 @@ function pingRootRouteTree(
       }
       const tree = route.tree
 
-      // Determine which fetch strategy to use for this prefetch task.
-      const fetchStrategy = task.includeDynamicData
-        ? FetchStrategy.Full
-        : route.isPPREnabled
-          ? FetchStrategy.PPR
-          : FetchStrategy.LoadingBoundary
-
+      const fetchStrategy = getFetchStrategyForTask(task, route)
       switch (fetchStrategy) {
         case FetchStrategy.PPR:
           // Individually prefetch the static shell for each segment. This is
@@ -559,6 +557,7 @@ function pingRootRouteTree(
           // enabled. It will not include any dynamic data.
           return pingPPRRouteTree(now, task, route, tree)
         case FetchStrategy.Full:
+        case FetchStrategy.PPRDynamic:
         case FetchStrategy.LoadingBoundary: {
           // Prefetch multiple segments using a single dynamic request.
           const spawnedEntries = new Map<string, PendingSegmentCacheEntry>()
@@ -599,6 +598,30 @@ function pingRootRouteTree(
   return PrefetchTaskExitStatus.Done
 }
 
+function getFetchStrategyForTask(
+  task: PrefetchTask,
+  route: RouteCacheEntry
+): FetchStrategy {
+  const { includeDynamicData } = task
+  switch (includeDynamicData) {
+    case 'dynamic': {
+      return FetchStrategy.PPRDynamic
+    }
+    case 'full': {
+      return FetchStrategy.Full
+    }
+    case null: {
+      return route.isPPREnabled
+        ? FetchStrategy.PPR
+        : FetchStrategy.LoadingBoundary
+    }
+    default: {
+      includeDynamicData satisfies never
+      throw new InvariantError('Unknown IncludeDynamicData')
+    }
+  }
+}
+
 function pingPPRRouteTree(
   now: number,
   task: PrefetchTask,
@@ -633,7 +656,10 @@ function diffRouteTreeAgainstCurrent(
   oldTree: FlightRouterState,
   newTree: RouteTree,
   spawnedEntries: Map<string, PendingSegmentCacheEntry>,
-  fetchStrategy: FetchStrategy.Full | FetchStrategy.LoadingBoundary
+  fetchStrategy:
+    | FetchStrategy.Full
+    | FetchStrategy.PPRDynamic
+    | FetchStrategy.LoadingBoundary
 ): FlightRouterState {
   // This is a single recursive traversal that does multiple things:
   // - Finds the parts of the target route (newTree) that are not part of
@@ -705,6 +731,21 @@ function diffRouteTreeAgainstCurrent(
             requestTreeChildren[parallelRouteKey] = requestTreeChild
             break
           }
+          case FetchStrategy.PPRDynamic: {
+            // This is a partially dynamic prefetch. Fetch all cacheable data in the tree,
+            // not just the static PPR shell.
+            const requestTreeChild = pingRouteTreeAndIncludeDynamicData(
+              now,
+              task,
+              route,
+              newTreeChild,
+              false,
+              spawnedEntries,
+              fetchStrategy
+            )
+            requestTreeChildren[parallelRouteKey] = requestTreeChild
+            break
+          }
           case FetchStrategy.Full: {
             // This is a "full" prefetch. Fetch all the data in the tree, both
             // static and dynamic. We issue roughly the same request that we
@@ -729,7 +770,8 @@ function diffRouteTreeAgainstCurrent(
               route,
               newTreeChild,
               false,
-              spawnedEntries
+              spawnedEntries,
+              fetchStrategy
             )
             requestTreeChildren[parallelRouteKey] = requestTreeChild
             break
@@ -864,7 +906,8 @@ function pingRouteTreeAndIncludeDynamicData(
   route: FulfilledRouteCacheEntry,
   tree: RouteTree,
   isInsideRefetchingParent: boolean,
-  spawnedEntries: Map<string, PendingSegmentCacheEntry>
+  spawnedEntries: Map<string, PendingSegmentCacheEntry>,
+  fetchStrategy: FetchStrategy.Full | FetchStrategy.PPRDynamic
 ): FlightRouterState {
   // The tree we're constructing is the same shape as the tree we're navigating
   // to. But even though this is a "new" tree, some of the individual segments
@@ -881,20 +924,27 @@ function pingRouteTreeAndIncludeDynamicData(
   switch (segment.status) {
     case EntryStatus.Empty: {
       // This segment is not cached. Include it in the request.
-      spawnedSegment = upgradeToPendingSegment(segment, FetchStrategy.Full)
+      spawnedSegment = upgradeToPendingSegment(segment, fetchStrategy)
       break
     }
     case EntryStatus.Fulfilled: {
       // The segment is already cached.
-      if (segment.isPartial) {
-        // The cached segment contians dynamic holes. Since this is a Full
-        // prefetch, we need to include it in the request.
+      if (
+        segment.isPartial &&
+        isFetchStrategyLessSpecific(segment.fetchStrategy, fetchStrategy)
+      ) {
+        // The cached segment contains dynamic holes, and was prefetched using a less specific strategy than the current one.
+        // This means we're in one of these cases:
+        //   - we have a static prefetch, and we're doing a dynamic prefetch
+        //   - we have a static or dynamic prefetch, and we're doing a Full prefetch (or a navigation).
+        // In either case, we need to include it in the request to get a more specific (or full) version.
         spawnedSegment = pingFullSegmentRevalidation(
           now,
           task,
           route,
           segment,
-          tree.key
+          tree.key,
+          fetchStrategy
         )
       }
       break
@@ -902,14 +952,15 @@ function pingRouteTreeAndIncludeDynamicData(
     case EntryStatus.Pending:
     case EntryStatus.Rejected: {
       // There's either another prefetch currently in progress, or the previous
-      // attempt failed. If it wasn't a Full prefetch, fetch it again.
-      if (segment.fetchStrategy !== FetchStrategy.Full) {
+      // attempt failed. If it wasn't a Full/PPRDynamic prefetch, fetch it again.
+      if (isFetchStrategyLessSpecific(segment.fetchStrategy, fetchStrategy)) {
         spawnedSegment = pingFullSegmentRevalidation(
           now,
           task,
           route,
           segment,
-          tree.key
+          tree.key,
+          fetchStrategy
         )
       }
       break
@@ -928,7 +979,8 @@ function pingRouteTreeAndIncludeDynamicData(
           route,
           childTree,
           isInsideRefetchingParent || spawnedSegment !== null,
-          spawnedEntries
+          spawnedEntries,
+          fetchStrategy
         )
     }
   }
@@ -950,6 +1002,29 @@ function pingRouteTreeAndIncludeDynamicData(
     tree.isRootLayout,
   ]
   return requestTree
+}
+
+function isFetchStrategyLessSpecific(
+  currentStrategy: FetchStrategy,
+  newStrategy: FetchStrategy.Full | FetchStrategy.PPRDynamic
+): boolean {
+  switch (newStrategy) {
+    case FetchStrategy.Full: {
+      return currentStrategy !== FetchStrategy.Full
+    }
+    case FetchStrategy.PPRDynamic: {
+      return (
+        currentStrategy !== FetchStrategy.PPRDynamic &&
+        // if we have an existing full prefetch, don't overwrite it --
+        // it's more specific than a PPRDynamic prefetch.
+        currentStrategy !== FetchStrategy.Full
+      )
+    }
+    default: {
+      newStrategy satisfies never
+      throw new InvariantError('Unknown FetchStrategy')
+    }
+  }
 }
 
 function pingPerSegment(
@@ -977,6 +1052,7 @@ function pingPerSegment(
       // request it is, we may want to revalidate it.
       switch (segment.fetchStrategy) {
         case FetchStrategy.PPR:
+        case FetchStrategy.PPRDynamic:
         case FetchStrategy.Full:
           // There's already a request in progress. Don't do anything.
           break
@@ -1009,6 +1085,7 @@ function pingPerSegment(
       // was originally fetched, we may or may not want to revalidate it.
       switch (segment.fetchStrategy) {
         case FetchStrategy.PPR:
+        case FetchStrategy.PPRDynamic:
         case FetchStrategy.Full:
           // The previous attempt to fetch this entry failed. Don't attempt to
           // fetch it again until the entry expires.
@@ -1098,21 +1175,22 @@ function pingFullSegmentRevalidation(
   task: PrefetchTask,
   route: FulfilledRouteCacheEntry,
   currentSegment: SegmentCacheEntry,
-  segmentKey: string
+  segmentKey: string,
+  fetchStrategy: FetchStrategy.Full | FetchStrategy.PPRDynamic
 ): PendingSegmentCacheEntry | null {
   const revalidatingSegment = readOrCreateRevalidatingSegmentEntry(
     now,
     currentSegment
   )
   if (revalidatingSegment.status === EntryStatus.Empty) {
-    // During a Full prefetch, a single dynamic request is made for all the
+    // During a Full/PPRDynamic prefetch, a single dynamic request is made for all the
     // segments that we need. So we don't initiate a request here directly. By
     // returning a pending entry from this function, it signals to the caller
     // that this segment should be included in the request that's sent to
     // the server.
     const pendingSegment = upgradeToPendingSegment(
       revalidatingSegment,
-      FetchStrategy.Full
+      fetchStrategy
     )
     upsertSegmentOnCompletion(
       task,
@@ -1124,15 +1202,20 @@ function pingFullSegmentRevalidation(
   } else {
     // There's already a revalidation in progress.
     const nonEmptyRevalidatingSegment = revalidatingSegment
-    if (nonEmptyRevalidatingSegment.fetchStrategy !== FetchStrategy.Full) {
-      // The existing revalidation was not fetched using the Full strategy.
+    if (
+      isFetchStrategyLessSpecific(
+        nonEmptyRevalidatingSegment.fetchStrategy,
+        fetchStrategy
+      )
+    ) {
+      // The existing revalidation was fetched using a less specific strategy.
       // Reset it and start a new revalidation.
       const emptySegment = resetRevalidatingSegmentEntry(
         nonEmptyRevalidatingSegment
       )
       const pendingSegment = upgradeToPendingSegment(
         emptySegment,
-        FetchStrategy.Full
+        fetchStrategy
       )
       upsertSegmentOnCompletion(
         task,

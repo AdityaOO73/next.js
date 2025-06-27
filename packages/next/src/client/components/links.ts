@@ -3,7 +3,7 @@ import type { AppRouterInstance } from '../../shared/lib/app-router-context.shar
 import { getCurrentAppRouterState } from './app-router-instance'
 import { createPrefetchURL } from './app-router'
 import { PrefetchKind } from './router-reducer/router-reducer-types'
-import { isPrefetchTaskDirty } from './segment-cache'
+import { isPrefetchTaskDirty, type IncludeDynamicData } from './segment-cache'
 import { createCacheKey } from './segment-cache'
 import {
   type PrefetchTask,
@@ -22,7 +22,7 @@ type Element = LinkElement | HTMLFormElement
 // shape for both to prevent a polymorphic de-opt in the VM.
 type LinkOrFormInstanceShared = {
   router: AppRouterInstance
-  kind: PrefetchKind.AUTO | PrefetchKind.FULL
+  kind: PrefetchKind.AUTO | PrefetchKind.DYNAMIC | PrefetchKind.FULL
 
   isVisible: boolean
 
@@ -140,7 +140,7 @@ export function mountLinkInstance(
   element: LinkElement,
   href: string,
   router: AppRouterInstance,
-  kind: PrefetchKind.AUTO | PrefetchKind.FULL,
+  kind: PrefetchKind.AUTO | PrefetchKind.DYNAMIC | PrefetchKind.FULL,
   prefetchEnabled: boolean,
   setOptimisticLinkStatus: (status: { pending: boolean }) => void
 ): LinkInstance {
@@ -178,7 +178,7 @@ export function mountFormInstance(
   element: HTMLFormElement,
   href: string,
   router: AppRouterInstance,
-  kind: PrefetchKind.AUTO | PrefetchKind.FULL
+  kind: PrefetchKind.AUTO | PrefetchKind.DYNAMIC | PrefetchKind.FULL
 ): void {
   const prefetchURL = coercePrefetchableUrl(href)
   if (prefetchURL === null) {
@@ -303,7 +303,7 @@ function rescheduleLinkPrefetch(
       instance.prefetchTask = scheduleSegmentPrefetchTask(
         cacheKey,
         treeAtTimeOfPrefetch,
-        instance.kind === PrefetchKind.FULL,
+        getIncludeDynamicDataFromKind(instance.kind),
         priority,
         null
       )
@@ -313,7 +313,7 @@ function rescheduleLinkPrefetch(
       reschedulePrefetchTask(
         existingPrefetchTask,
         treeAtTimeOfPrefetch,
-        instance.kind === PrefetchKind.FULL,
+        getIncludeDynamicDataFromKind(instance.kind),
         priority
       )
     }
@@ -347,7 +347,7 @@ export function pingVisibleLinks(
     instance.prefetchTask = scheduleSegmentPrefetchTask(
       cacheKey,
       tree,
-      instance.kind === PrefetchKind.FULL,
+      getIncludeDynamicDataFromKind(instance.kind),
       PrefetchPriority.Default,
       null
     )
@@ -378,4 +378,17 @@ function prefetchWithOldCacheImplementation(instance: PrefetchableInstance) {
       throw err
     }
   })
+}
+
+function getIncludeDynamicDataFromKind(
+  kind: PrefetchableInstance['kind']
+): IncludeDynamicData {
+  switch (kind) {
+    case PrefetchKind.FULL:
+      return 'full'
+    case PrefetchKind.DYNAMIC:
+      return 'dynamic'
+    default:
+      return null
+  }
 }

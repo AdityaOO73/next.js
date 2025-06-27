@@ -151,7 +151,7 @@ type InternalLinkProps = {
    * </Link>
    * ```
    */
-  prefetch?: boolean | 'auto' | null
+  prefetch?: boolean | 'auto' | null | 'unstable_forceStale'
 
   /**
    * (unstable) Switch to a dynamic prefetch on hover. Effectively the same as
@@ -356,17 +356,8 @@ export default function LinkComponent(
   const router = React.useContext(AppRouterContext)
 
   const prefetchEnabled = prefetchProp !== false
-  /**
-   * The possible states for prefetch are:
-   * - null: this is the default "auto" mode, where we will prefetch partially if the link is in the viewport
-   * - true: we will prefetch if the link is visible and prefetch the full page, not just partially
-   * - false: we will not prefetch if in the viewport at all
-   * - 'unstable_dynamicOnHover': this starts in "auto" mode, but switches to "full" when the link is hovered
-   */
-  const appPrefetchKind =
-    prefetchProp === null || prefetchProp === 'auto'
-      ? PrefetchKind.AUTO
-      : PrefetchKind.FULL
+
+  const appPrefetchKind = getPrefetchKind(prefetchProp) ?? PrefetchKind.AUTO
 
   if (process.env.NODE_ENV !== 'production') {
     function createPropError(args: {
@@ -469,11 +460,12 @@ export default function LinkComponent(
         if (
           props[key] != null &&
           valType !== 'boolean' &&
-          props[key] !== 'auto'
+          props[key] !== 'auto' &&
+          props[key] !== 'unstable_forceStale'
         ) {
           throw createPropError({
             key,
-            expected: '`boolean | "auto"`',
+            expected: '`boolean | "auto" | "unstable_forceStale"`',
             actual: valType,
           })
         }
@@ -743,4 +735,39 @@ const LinkStatusContext = createContext<
 
 export const useLinkStatus = () => {
   return useContext(LinkStatusContext)
+}
+
+function getPrefetchKind(
+  prefetchProp: Exclude<LinkProps['prefetch'], undefined>
+): PrefetchKind.AUTO | PrefetchKind.DYNAMIC | PrefetchKind.FULL | null {
+  if (prefetchProp === false) {
+    return null
+  }
+
+  if (
+    process.env.__NEXT_DYNAMIC_IO &&
+    process.env.__NEXT_CLIENT_SEGMENT_CACHE
+  ) {
+    // In the new implementation:
+    // - `prefetch={true}` is a dynamic prefetch
+    //   (includes cached IO + params + cookies, with dynamic holes for uncached IO).
+    // - `unstable_forceStale` is a "full" prefetch
+    //   (forces inclusion of all dynamic data, i.e. the old behavior of `prefetch={true}`)
+    if (prefetchProp === true) {
+      return PrefetchKind.DYNAMIC
+    }
+    if (prefetchProp === 'unstable_forceStale') {
+      return PrefetchKind.FULL
+    }
+  } else {
+    // In the old implementation, `prefetch={true}` forces all dynamic data to be prefetched.
+    // We do the same for `"unstable_forceStale"` for future-compatibility.
+    if (prefetchProp === true || prefetchProp === 'unstable_forceStale') {
+      return PrefetchKind.FULL
+    }
+  }
+
+  // `null` or `"auto"`: this is the default "auto" mode, where we will prefetch partially if the link is in the viewport
+  prefetchProp satisfies null | 'auto'
+  return PrefetchKind.AUTO
 }
