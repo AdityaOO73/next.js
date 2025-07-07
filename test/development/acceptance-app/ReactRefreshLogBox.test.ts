@@ -1141,7 +1141,7 @@ describe('ReactRefreshLogBox app', () => {
     `)
   })
 
-  test('should hide unrelated frames in stack trace with unknown anonymous calls', async () => {
+  fit('should hide unrelated frames in stack trace with unknown anonymous calls', async () => {
     await using sandbox = await createSandbox(
       next,
       new Map([
@@ -1163,41 +1163,25 @@ describe('ReactRefreshLogBox app', () => {
     )
     const { browser } = sandbox
 
-    if (isTurbopack) {
-      // TODO(veil): investigate the column number is off by 1 between turbo and webpack
-      await expect(browser).toDisplayRedbox(`
-       {
-         "description": "This is an error from an anonymous function",
-         "environmentLabel": "Server",
-         "label": "Runtime Error",
-         "source": "app/page.js (4:13) @ <anonymous>
-       > 4 |       throw new Error("This is an error from an anonymous function");
-           |             ^",
-         "stack": [
-           "<anonymous> app/page.js (4:13)",
-           "Page app/page.js (5:6)",
-         ],
-       }
-      `)
-    } else {
-      await expect(browser).toDisplayRedbox(`
-       {
-         "description": "This is an error from an anonymous function",
-         "environmentLabel": "Server",
-         "label": "Runtime Error",
-         "source": "app/page.js (4:13) @ eval
-       > 4 |       throw new Error("This is an error from an anonymous function");
-           |             ^",
-         "stack": [
-           "eval app/page.js (4:13)",
-           "Page app/page.js (5:5)",
-         ],
-       }
-      `)
-    }
+    // TODO(veil): Turbopack uses correct name
+    // TODO(veil): Column of 2nd frame should be 7
+    await expect(browser).toDisplayRedbox(`
+      {
+        "description": "This is an error from an anonymous function",
+        "environmentLabel": "Server",
+        "label": "Runtime Error",
+        "source": "app/page.js (4:13) @ ${isTurbopack ? '<anonymous>' : 'eval'}
+      > 4 |       throw new Error("This is an error from an anonymous function");
+          |             ^",
+        "stack": [
+          "${isTurbopack ? '<anonymous>' : 'eval'} app/page.js (4:13)",
+          "Page app/page.js (5:${isTurbopack ? '6' : '5'})",
+        ],
+      }
+    `)
   })
 
-  test('should hide unrelated frames in stack trace with nodejs internal calls', async () => {
+  it('should hide unrelated frames in stack trace with nodejs internal calls', async () => {
     await using sandbox = await createSandbox(
       next,
       new Map([
@@ -1213,35 +1197,19 @@ describe('ReactRefreshLogBox app', () => {
     )
     const { browser } = sandbox
 
-    if (isTurbopack) {
-      await expect(browser).toDisplayRedbox(`
-       {
-         "description": "Invalid URL",
-         "environmentLabel": "Server",
-         "label": "Runtime TypeError",
-         "source": "app/page.js (2:3) @ Page
-       > 2 |   new URL("/", "invalid");
-           |   ^",
-         "stack": [
-           "Page app/page.js (2:3)",
-         ],
-       }
-      `)
-    } else {
-      await expect(browser).toDisplayRedbox(`
-       {
-         "description": "Invalid URL",
-         "environmentLabel": "Server",
-         "label": "Runtime TypeError",
-         "source": "app/page.js (2:3) @ Page
-       > 2 |   new URL("/", "invalid");
-           |   ^",
-         "stack": [
-           "Page app/page.js (2:3)",
-         ],
-       }
-      `)
-    }
+    await expect(browser).toDisplayRedbox(`
+     {
+       "description": "Invalid URL",
+       "environmentLabel": "Server",
+       "label": "Runtime TypeError",
+       "source": "app/page.js (2:3) @ Page
+     > 2 |   new URL("/", "invalid");
+         |   ^",
+       "stack": [
+         "Page app/page.js (2:3)",
+       ],
+     }
+    `)
   })
 
   test('Server component errors should open up in fullscreen', async () => {

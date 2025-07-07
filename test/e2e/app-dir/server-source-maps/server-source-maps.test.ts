@@ -36,12 +36,12 @@ describe('app-dir - server source maps', () => {
       })
       expect(normalizeCliOutput(next.cliOutput.slice(outputIndex))).toContain(
         '\nError: rsc-error-log' +
-          '\n    at logError (app/rsc-error-log/page.js:4:16)' +
-          '\n    at Page (app/rsc-error-log/page.js:9:2)' +
+          '\n    at logError (app/rsc-error-log/page.js:4:17)' +
+          '\n    at Page (app/rsc-error-log/page.js:9:3)' +
           '\n  2 |' +
           '\n  3 | function logError() {' +
           "\n> 4 |   const error = new Error('rsc-error-log')" +
-          '\n    |                ^' +
+          '\n    |                 ^' +
           '\n  5 |   console.error(error)' +
           '\n  6 | }' +
           '\n  7 |' +
@@ -52,12 +52,12 @@ describe('app-dir - server source maps', () => {
         // TODO(veil): Sourcemap names
         // TODO(veil): relative paths
         expect(normalizeCliOutput(next.cliOutput)).toContain(
-          '(turbopack:///[project]/app/rsc-error-log/page.js:4:16)'
+          '(turbopack:///[project]/app/rsc-error-log/page.js:4:17)'
         )
         expect(normalizeCliOutput(next.cliOutput)).toContain(
           '' +
             "\n> 4 |   const error = new Error('rsc-error-log')" +
-            '\n    |                ^'
+            '\n    |                 ^'
         )
       } else {
         // TODO(veil): line/column numbers are flaky in Webpack
@@ -77,20 +77,20 @@ describe('app-dir - server source maps', () => {
       })
       expect(normalizeCliOutput(next.cliOutput.slice(outputIndex))).toContain(
         '\nError: rsc-error-log-cause' +
-          '\n    at logError (app/rsc-error-log-cause/page.js:2:16)' +
-          '\n    at Page (app/rsc-error-log-cause/page.js:8:2)' +
+          '\n    at logError (app/rsc-error-log-cause/page.js:2:17)' +
+          '\n    at Page (app/rsc-error-log-cause/page.js:8:3)' +
           '\n  1 | function logError(cause) {' +
           "\n> 2 |   const error = new Error('rsc-error-log-cause', { cause })" +
-          '\n    |                ^' +
+          '\n    |                 ^' +
           '\n  3 |   console.error(error)' +
           '\n  4 | }' +
           '\n  5 | {' +
           '\n  [cause]: Error: Boom' +
-          '\n      at Page (app/rsc-error-log-cause/page.js:7:16)' +
+          '\n      at Page (app/rsc-error-log-cause/page.js:7:17)' +
           '\n     5 |' +
           '\n     6 | export default function Page() {' +
           "\n  >  7 |   const error = new Error('Boom')" +
-          '\n       |                ^' +
+          '\n       |                 ^' +
           '\n     8 |   logError(error)' +
           '\n     9 |   return null' +
           '\n    10 | }' +
@@ -101,20 +101,20 @@ describe('app-dir - server source maps', () => {
         // TODO(veil): Sourcemap names
         // TODO(veil): relative paths
         expect(normalizeCliOutput(next.cliOutput)).toContain(
-          '(turbopack:///[project]/app/rsc-error-log-cause/page.js:2:16)'
+          '(turbopack:///[project]/app/rsc-error-log-cause/page.js:2:17)'
         )
         expect(normalizeCliOutput(next.cliOutput)).toContain(
-          '(turbopack:///[project]/app/rsc-error-log-cause/page.js:7:16)'
+          '(turbopack:///[project]/app/rsc-error-log-cause/page.js:7:17)'
         )
         expect(normalizeCliOutput(next.cliOutput)).toContain(
           '' +
             "\n> 2 |   const error = new Error('rsc-error-log-cause', { cause })" +
-            '\n    |                ^'
+            '\n    |                 ^'
         )
         expect(normalizeCliOutput(next.cliOutput)).toContain(
           '' +
             "\n  >  7 |   const error = new Error('Boom')" +
-            '\n       |                ^'
+            '\n       |                 ^'
         )
       } else {
         // TODO(veil): line/column numbers are flaky in Webpack
@@ -135,37 +135,37 @@ describe('app-dir - server source maps', () => {
       expect(normalizeCliOutput(next.cliOutput.slice(outputIndex))).toContain(
         isTurbopack
           ? '\nError: ssr-error-log-ignore-listed' +
-              '\n    at logError (app/ssr-error-log-ignore-listed/page.js:9:16)' +
-              '\n    at runWithInternalIgnored (app/ssr-error-log-ignore-listed/page.js:19:12)' +
+              '\n    at logError (app/ssr-error-log-ignore-listed/page.js:9:17)' +
+              '\n    at runWithInternalIgnored (app/ssr-error-log-ignore-listed/page.js:19:13)' +
               '\n    at runWithExternalSourceMapped (app/ssr-error-log-ignore-listed/page.js:18:29)' +
               '\n    at runWithExternal (app/ssr-error-log-ignore-listed/page.js:17:32)' +
               '\n    at runWithInternalSourceMapped (app/ssr-error-log-ignore-listed/page.js:16:18)' +
               // Realpath does not point into node_modules so we don't ignore it.
               // TODO(veil): Should be internal-pkg/sourcemapped.ts
-              '\n    at runInternalSourceMapped (sourcemapped.ts:5:9)' +
+              '\n    at runInternalSourceMapped (sourcemapped.ts:5:10)' +
               '\n    at runWithInternal (app/ssr-error-log-ignore-listed/page.js:15:28)' +
               // Realpath does not point into node_modules so we don't ignore it.
-              '\n    at runInternal (internal-pkg/index.js:2:9)' +
+              '\n    at runInternal (internal-pkg/index.js:2:10)' +
               '\n    at Page (app/ssr-error-log-ignore-listed/page.js:14:14)' +
               '\n   7 |' +
               '\n'
           : '\nError: ssr-error-log-ignore-listed' +
-              '\n    at logError (app/ssr-error-log-ignore-listed/page.js:9:16)' +
-              '\n    at runWithInternalIgnored (app/ssr-error-log-ignore-listed/page.js:19:12)' +
+              '\n    at logError (app/ssr-error-log-ignore-listed/page.js:9:17)' +
+              '\n    at runWithInternalIgnored (app/ssr-error-log-ignore-listed/page.js:19:13)' +
               // TODO(veil-NDX-910): Webpacks's sourcemap loader drops `ignoreList`
               // TODO(veil): Webpack's sourcemap loader creates an incorrect `sources` entry.
               // Can be worked around by using `./sourcemapped.ts` instead of `sourcemapped.ts`.
-              '\n    at runInternalIgnored (webpack-internal:/(ssr)/internal-pkg/ignored.ts:6:9)' +
+              '\n    at runInternalIgnored (webpack-internal:/(ssr)/internal-pkg/ignored.ts:6:10)' +
               '\n    at runWithExternalSourceMapped (app/ssr-error-log-ignore-listed/page.js:18:29)' +
               '\n    at runWithExternal (app/ssr-error-log-ignore-listed/page.js:17:32)' +
               '\n    at runWithInternalSourceMapped (app/ssr-error-log-ignore-listed/page.js:16:18)' +
               // TODO(veil): Webpack's sourcemap loader creates an incorrect `sources` entry.
               // Can be worked around by using `./sourcemapped.ts` instead of `sourcemapped.ts`.
               // Realpath does not point into node_modules so we don't ignore it.
-              '\n    at runInternalSourceMapped (webpack-internal:/(ssr)/internal-pkg/sourcemapped.ts:5:9)' +
+              '\n    at runInternalSourceMapped (webpack-internal:/(ssr)/internal-pkg/sourcemapped.ts:5:10)' +
               '\n    at runWithInternal (app/ssr-error-log-ignore-listed/page.js:15:28)' +
               // Realpath does not point into node_modules so we don't ignore it.
-              '\n    at runInternal (internal-pkg/index.js:2:9)' +
+              '\n    at runInternal (internal-pkg/index.js:2:10)' +
               '\n    at Page (app/ssr-error-log-ignore-listed/page.js:14:14)' +
               '\n   7 |' +
               '\n'
@@ -185,14 +185,14 @@ describe('app-dir - server source maps', () => {
              "logError app/ssr-error-log-ignore-listed/page.js (9:17)",
              "runWithInternalIgnored app/ssr-error-log-ignore-listed/page.js (19:13)",
              "<FIXME-file-protocol>",
-             "runWithExternalSourceMapped app/ssr-error-log-ignore-listed/page.js (18:28)",
+             "runWithExternalSourceMapped app/ssr-error-log-ignore-listed/page.js (18:29)",
              "<FIXME-file-protocol>",
-             "runWithExternal app/ssr-error-log-ignore-listed/page.js (17:31)",
-             "runWithInternalSourceMapped app/ssr-error-log-ignore-listed/page.js (16:17)",
+             "runWithExternal app/ssr-error-log-ignore-listed/page.js (17:32)",
+             "runWithInternalSourceMapped app/ssr-error-log-ignore-listed/page.js (16:18)",
              "<FIXME-file-protocol>",
-             "runWithInternal app/ssr-error-log-ignore-listed/page.js (15:27)",
+             "runWithInternal app/ssr-error-log-ignore-listed/page.js (15:28)",
              "runInternal internal-pkg/index.js (2:10)",
-             "Page app/ssr-error-log-ignore-listed/page.js (14:13)",
+             "Page app/ssr-error-log-ignore-listed/page.js (14:14)",
            ],
          }
         `)
@@ -228,10 +228,10 @@ describe('app-dir - server source maps', () => {
         // TODO(veil): Sourcemap names
         // TODO(veil): relative paths
         expect(normalizeCliOutput(next.cliOutput)).toContain(
-          '(turbopack:///[project]/app/ssr-error-log-ignore-listed/page.js:24:2)'
+          '(turbopack:///[project]/app/ssr-error-log-ignore-listed/page.js:23:5)'
         )
         expect(normalizeCliOutput(next.cliOutput)).toContain(
-          '\n> 24 |   })\n     |  ^'
+          '\n> 23 |     })\n     |     ^'
         )
       } else {
         // TODO(veil): line/column numbers are flaky in Webpack
@@ -252,37 +252,37 @@ describe('app-dir - server source maps', () => {
       expect(normalizeCliOutput(next.cliOutput.slice(outputIndex))).toContain(
         isTurbopack
           ? '\nError: rsc-error-log-ignore-listed' +
-              '\n    at logError (app/rsc-error-log-ignore-listed/page.js:8:16)' +
-              '\n    at runWithInternalIgnored (app/rsc-error-log-ignore-listed/page.js:18:12)' +
+              '\n    at logError (app/rsc-error-log-ignore-listed/page.js:8:17)' +
+              '\n    at runWithInternalIgnored (app/rsc-error-log-ignore-listed/page.js:18:13)' +
               '\n    at runWithExternalSourceMapped (app/rsc-error-log-ignore-listed/page.js:17:29)' +
               '\n    at runWithExternal (app/rsc-error-log-ignore-listed/page.js:16:32)' +
               '\n    at runWithInternalSourceMapped (app/rsc-error-log-ignore-listed/page.js:15:18)' +
               // Realpath does not point into node_modules so we don't ignore it.
               // TODO(veil): Should be internal-pkg/sourcemapped.ts
-              '\n    at runInternalSourceMapped (sourcemapped.ts:5:9)' +
+              '\n    at runInternalSourceMapped (sourcemapped.ts:5:10)' +
               '\n    at runWithInternal (app/rsc-error-log-ignore-listed/page.js:14:28)' +
               // Realpath does not point into node_modules so we don't ignore it.
-              '\n    at runInternal (internal-pkg/index.js:2:9)' +
+              '\n    at runInternal (internal-pkg/index.js:2:10)' +
               '\n    at Page (app/rsc-error-log-ignore-listed/page.js:13:14)' +
               '\n   6 |' +
               '\n'
           : '\nError: rsc-error-log-ignore-listed' +
-              '\n    at logError (app/rsc-error-log-ignore-listed/page.js:8:16)' +
-              '\n    at runWithInternalIgnored (app/rsc-error-log-ignore-listed/page.js:18:12)' +
+              '\n    at logError (app/rsc-error-log-ignore-listed/page.js:8:17)' +
+              '\n    at runWithInternalIgnored (app/rsc-error-log-ignore-listed/page.js:18:13)' +
               // TODO(veil): Webpacks's sourcemap loader drops `ignoreList`
               // TODO(veil): Webpack's sourcemap loader creates an incorrect `sources` entry.
               // Can be worked around by using `./sourcemapped.ts` instead of `sourcemapped.ts`.
-              '\n    at runInternalIgnored (webpack-internal:/(rsc)/internal-pkg/ignored.ts:6:9)' +
+              '\n    at runInternalIgnored (webpack-internal:/(rsc)/internal-pkg/ignored.ts:6:10)' +
               '\n    at runWithExternalSourceMapped (app/rsc-error-log-ignore-listed/page.js:17:29)' +
               '\n    at runWithExternal (app/rsc-error-log-ignore-listed/page.js:16:32)' +
               '\n    at runWithInternalSourceMapped (app/rsc-error-log-ignore-listed/page.js:15:18)' +
               // TODO(veil): Webpack's sourcemap loader creates an incorrect `sources` entry.
               // Can be worked around by using `./sourcemapped.ts` instead of `sourcemapped.ts`.
               // Realpath does not point into node_modules so we don't ignore it.
-              '\n    at runInternalSourceMapped (webpack-internal:/(rsc)/internal-pkg/sourcemapped.ts:5:9)' +
+              '\n    at runInternalSourceMapped (webpack-internal:/(rsc)/internal-pkg/sourcemapped.ts:5:10)' +
               '\n    at runWithInternal (app/rsc-error-log-ignore-listed/page.js:14:28)' +
               // Realpath does not point into node_modules so we don't ignore it.
-              '\n    at runInternal (internal-pkg/index.js:2:9)' +
+              '\n    at runInternal (internal-pkg/index.js:2:10)' +
               '\n    at Page (app/rsc-error-log-ignore-listed/page.js:13:14)' +
               '\n   6 |' +
               '\n'
@@ -292,12 +292,12 @@ describe('app-dir - server source maps', () => {
         // TODO(veil): Sourcemap names
         // TODO(veil): relative paths
         expect(normalizeCliOutput(next.cliOutput)).toContain(
-          'at <unknown> (turbopack:///[project]/app/rsc-error-log-ignore-listed/page.js:8:16)'
+          'at <unknown> (turbopack:///[project]/app/rsc-error-log-ignore-listed/page.js:8:17)'
         )
         expect(normalizeCliOutput(next.cliOutput)).toContain(
           '' +
             "\n>  8 |   const error = new Error('rsc-error-log-ignore-listed')" +
-            '\n     |                ^'
+            '\n     |                 ^'
         )
       } else {
         // TODO(veil): line/column numbers are flaky in Webpack
@@ -317,12 +317,12 @@ describe('app-dir - server source maps', () => {
       const cliOutput = stripAnsi(next.cliOutput.slice(outputIndex))
       expect(cliOutput).toContain(
         '\n ⨯ Error: ssr-throw' +
-          '\n    at throwError (app/ssr-throw/Thrower.js:4:8)' +
-          '\n    at Thrower (app/ssr-throw/Thrower.js:8:2)' +
+          '\n    at throwError (app/ssr-throw/Thrower.js:4:9)' +
+          '\n    at Thrower (app/ssr-throw/Thrower.js:8:3)' +
           '\n  2 |' +
           '\n  3 | function throwError() {' +
           "\n> 4 |   throw new Error('ssr-throw')" +
-          '\n    |        ^' +
+          '\n    |         ^' +
           '\n  5 | }' +
           '\n  6 |' +
           '\n  7 | export function Thrower() { {' +
@@ -390,8 +390,8 @@ describe('app-dir - server source maps', () => {
           // Node.js is fine with invalid URLs in index maps apparently.
           '' +
             '\nError: bad-sourcemap' +
-            '\n    at logError (custom://[badhost]/app/bad-sourcemap/page.js:6:16)' +
-            '\n    at Page (custom://[badhost]/app/bad-sourcemap/page.js:10:2)' +
+            '\n    at logError (custom://[badhost]/app/bad-sourcemap/page.js:6:17)' +
+            '\n    at Page (custom://[badhost]/app/bad-sourcemap/page.js:10:3)' +
             // TODO: Remove blank line
             '\n'
         )
@@ -440,9 +440,9 @@ describe('app-dir - server source maps', () => {
           '' +
             '\nError: module-evaluation' +
             // TODO(veil): Should map to no name like you'd get with native stacks without a bundler.
-            '\n    at [project]/app/module-evaluation/module.js [app-rsc] (ecmascript) (app/module-evaluation/module.js:1:21)' +
+            '\n    at [project]/app/module-evaluation/module.js [app-rsc] (ecmascript) (app/module-evaluation/module.js:1:22)' +
             // TODO(veil): Added frames from bundler should be sourcemapped (https://linear.app/vercel/issue/NDX-509/)
-            '\n    at [project]/app/module-evaluation/page.js [app-rsc] (ecmascript) (app/module-evaluation/page.js:1:0)' +
+            '\n    at [project]/app/module-evaluation/page.js [app-rsc] (ecmascript) (app/module-evaluation/page.js:1:1)' +
             '\n    at [project]/app/module-evaluation/page.js [app-rsc] (ecmascript, Next.js Server Component) (.next'
         )
       } else {
@@ -451,7 +451,7 @@ describe('app-dir - server source maps', () => {
             '\nError: module-evaluation' +
             // TODO(veil): Should map to no name like you'd get with native stacks without a bundler.
             // TODO(veil): Location should be sourcemapped
-            '\n    at eval (app/module-evaluation/module.js:1:21)' +
+            '\n    at eval (app/module-evaluation/module.js:1:22)' +
             // TODO(veil): Added frames from bundler should be sourcemapped (https://linear.app/vercel/issue/NDX-509/)
             '\n    at <unknown> (rsc)/.'
         )
@@ -460,7 +460,7 @@ describe('app-dir - server source maps', () => {
       expect(cliOutput).toContain(
         '' +
           "\n> 1 | export const error = new Error('module-evaluation')" +
-          '\n    |                     ^'
+          '\n    |                      ^'
       )
 
       if (isTurbopack) {
@@ -510,14 +510,14 @@ describe('app-dir - server source maps', () => {
         ).toContain(
           '' +
             '\nError: module-evaluation' +
-            '\n    at <TurbopackModuleID> (turbopack:///[project]/app/module-evaluation/module.js:1:21)' +
+            '\n    at <TurbopackModuleID> (turbopack:///[project]/app/module-evaluation/module.js:1:22)' +
             // TODO(veil): Turbopack internals. Feel free to update. Tracked in https://linear.app/vercel/issue/NEXT-4362
             '\n    at Object.<anonymous>'
         )
         expect(normalizeCliOutput(next.cliOutput)).toContain(
           '' +
             "\n> 1 | export const error = new Error('module-evaluation')" +
-            '\n    |                     ^'
+            '\n    |                      ^'
         )
       } else {
         expect(
