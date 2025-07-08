@@ -1,3 +1,6 @@
+// This will throw a type error because it's not one of the allowed values!
+// export const dynamic = 'some-random-string'
+
 export default async function BlogPostPage(props: PageProps<'/blog/[slug]'>) {
   const params = await props.params
 

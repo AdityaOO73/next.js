@@ -210,7 +210,10 @@ import { extractNextErrorCode } from '../lib/error-telemetry-utils'
 import { runAfterProductionCompile } from './after-production-compile'
 import { generatePreviewKeys } from './preview-key-utils'
 import { handleBuildComplete } from './adapter/build-complete'
-import { generateRouteTypesFile } from '../server/lib/router-utils/typegen'
+import {
+  generateRouteTypesFile,
+  generateValidatorFile,
+} from '../server/lib/router-utils/typegen'
 import { mkdir } from 'fs/promises'
 import {
   type RouteTypesManifest,
@@ -849,12 +852,14 @@ async function createRouteTypesManifestFromBuild({
   mappedPages,
   mappedAppPages,
   appDir,
+  pagesDir,
   config,
 }: {
   dir: string
   mappedPages: Record<string, string>
   mappedAppPages: Record<string, string> | undefined
   appDir: string | undefined
+  pagesDir: string | undefined
   config: NextConfigComplete
 }): Promise<RouteTypesManifest> {
   const pageRoutes: Array<{ route: string; filePath: string }> = []
@@ -865,13 +870,26 @@ async function createRouteTypesManifestFromBuild({
     slots?: string[]
   }> = []
 
+  // Collect all file paths for validator.ts
+  const allAppPaths = new Set<string>()
+  const allPagePaths = new Set<string>()
+  const allLayoutPaths = new Set<string>()
+
   const discoveredLayouts = new Set<string>()
 
   // Build pages routes - filter out reserved pages but NOT API routes
   for (const [route, filePath] of Object.entries(mappedPages)) {
     // Only filter out _app, _error, _document but not API routes
     if (isReservedPage(route) && !route.startsWith('/api/')) continue
-    pageRoutes.push({ route, filePath })
+
+    // Strip the internal prefix and resolve to actual file path
+    const actualFilePath = pagesDir
+      ? path.join(pagesDir, filePath.replace(/^private-next-pages\//, ''))
+      : filePath
+
+    pageRoutes.push({ route, filePath: actualFilePath })
+    // Add relative path for validator
+    allPagePaths.add(path.relative(dir, actualFilePath))
   }
 
   // Build app routes and discover layouts if appDir exists
@@ -934,6 +952,9 @@ async function createRouteTypesManifestFromBuild({
           filePath: absoluteFilePath,
         })
 
+        // Add relative path for validator
+        allAppPaths.add(path.relative(dir, absoluteFilePath))
+
         // Discover layouts by walking up from this page file (similar to getStaticInfoIncludingLayouts)
         let currentDir = path.dirname(absoluteFilePath)
 
@@ -973,6 +994,9 @@ async function createRouteTypesManifestFromBuild({
         filePath: layoutFile,
         slots: slots.length > 0 ? slots : undefined,
       })
+
+      // Add relative path for validator
+      allLayoutPaths.add(path.relative(dir, layoutFile))
     }
   }
 
@@ -981,6 +1005,9 @@ async function createRouteTypesManifestFromBuild({
     pageRoutes,
     appRoutes,
     layoutRoutes,
+    appPaths: allAppPaths,
+    pagePaths: allPagePaths,
+    layoutPaths: allLayoutPaths,
   })
 }
 
@@ -1396,12 +1423,24 @@ export default async function build(
               mappedPages,
               mappedAppPages,
               appDir,
+              pagesDir,
               config,
             })
 
             await fs.writeFile(
               routeTypesFilePath,
               generateRouteTypesFile(routeTypesManifest)
+            )
+
+            // Generate validator file
+            const validatorFilePath = path.join(
+              distDir,
+              'types',
+              'validator.ts'
+            )
+            await fs.writeFile(
+              validatorFilePath,
+              generateValidatorFile(routeTypesManifest)
             )
           })
       }

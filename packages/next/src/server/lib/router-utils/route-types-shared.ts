@@ -13,6 +13,9 @@ export interface RouteTypesManifest {
   appRoutes: Record<string, RouteInfo>
   pageRoutes: Record<string, RouteInfo>
   layoutRoutes: Record<string, RouteInfo | (RouteInfo & { slots: string[] })>
+  appPaths: Set<string>
+  pagePaths: Set<string>
+  layoutPaths: Set<string>
 }
 
 /**
@@ -84,6 +87,9 @@ export function createUnifiedRouteTypesManifest({
   pageRoutes,
   appRoutes,
   layoutRoutes,
+  appPaths,
+  pagePaths,
+  layoutPaths,
 }: {
   dir: string
   pageRoutes: Array<{ route: string; filePath: string }>
@@ -93,11 +99,18 @@ export function createUnifiedRouteTypesManifest({
     filePath: string
     slots?: string[]
   }>
+  appPaths: Set<string>
+  pagePaths: Set<string>
+  layoutPaths: Set<string>
+  
 }): RouteTypesManifest {
   const manifest: RouteTypesManifest = {
     appRoutes: {},
     pageRoutes: {},
     layoutRoutes: {},
+    appPaths,
+    pagePaths,
+    layoutPaths,
   }
 
   // Process page routes
