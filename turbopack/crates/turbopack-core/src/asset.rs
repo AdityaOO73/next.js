@@ -22,7 +22,7 @@ pub trait Asset {
 }
 
 #[turbo_tasks::value(shared)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AssetContent {
     File(ResolvedVc<FileContent>),
     // for the relative link, the target is raw value read from the link
@@ -90,6 +90,7 @@ impl AssetContent {
     #[turbo_tasks::function]
     pub async fn write(self: Vc<Self>, path: FileSystemPath) -> Result<()> {
         let this = self.await?;
+        println!("AssetContent::write(), {}, {:?}", path, this);
         match &*this {
             AssetContent::File(file) => {
                 let _ = path.write(**file);

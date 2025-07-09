@@ -723,7 +723,9 @@ impl FileSystem for DiskFileSystem {
         let inner = self.inner.clone();
         let invalidator = turbo_tasks::get_invalidator();
 
+        println!("queue write effect to {}", full_path.display());
         effect(async move {
+            println!("execute write effect to {}", full_path.display());
             let full_path = validate_path_length(&full_path)?;
 
             let _lock = inner.lock_path(&full_path).await;

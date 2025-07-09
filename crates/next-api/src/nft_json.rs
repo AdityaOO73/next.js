@@ -57,6 +57,15 @@ impl OutputAsset for NftJsonAsset {
     #[turbo_tasks::function]
     async fn path(&self) -> Result<Vc<FileSystemPath>> {
         let path = self.chunk.path().await?;
+        println!(
+            "NftJsonAsset: path: {} {:?} {}",
+            path.path,
+            self.page_name,
+            path.fs
+                .root()
+                .await?
+                .join(&format!("{}.nft.json", path.path))?
+        );
         Ok(path
             .fs
             .root()
@@ -91,10 +100,10 @@ fn get_output_specifier(
         ));
     }
 
-    if path_ref.is_inside_ref(client_root) {
-        // Client assets are never needed on the server, they are served via a CDN
-        return Ok(None);
-    }
+    // if path_ref.is_inside_ref(client_root) {
+    //     // Client assets are never needed on the server, they are served via a CDN
+    //     return Ok(None);
+    // }
 
     // Make this an error for now, this should effectively be unreachable
     bail!("NftJsonAsset: cannot handle filepath {}", path_ref);

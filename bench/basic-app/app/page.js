@@ -1,7 +1,10 @@
-import React from 'react'
+import ClientComponent from './client'
 
 export default function Page() {
-  return <h1>My Page</h1>
+  return (
+    <div>
+      hi
+      <ClientComponent />
+    </div>
+  )
 }
-
-export const dynamic = 'force-dynamic'

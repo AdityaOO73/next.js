@@ -1157,20 +1157,21 @@ impl PageEndpoint {
                     let loadable_manifest_output =
                         self.react_loadable_manifest(*dynamic_import_entries, NextRuntime::NodeJs);
 
-                    ResolvedVc::cell(Some(ResolvedVc::upcast(
-                        NftJsonAsset::new(
-                            project,
-                            Some(this.original_name.clone()),
-                            *ssr_entry_chunk,
-                            loadable_manifest_output
-                                .await?
-                                .iter()
-                                .map(|m| **m)
-                                .collect(),
-                        )
-                        .to_resolved()
-                        .await?,
-                    )))
+                    // ResolvedVc::cell(Some(ResolvedVc::upcast(
+                    //     NftJsonAsset::new(
+                    //         project,
+                    //         Some(this.original_name.clone()),
+                    //         *ssr_entry_chunk,
+                    //         loadable_manifest_output
+                    //             .await?
+                    //             .iter()
+                    //             .map(|m| **m)
+                    //             .collect(),
+                    //     )
+                    //     .to_resolved()
+                    //     .await?,
+                    // )))
+                    ResolvedVc::cell(None)
                 } else {
                     ResolvedVc::cell(None)
                 };

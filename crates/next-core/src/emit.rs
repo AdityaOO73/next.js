@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tracing::Instrument;
 use turbo_tasks::{
-    FxIndexSet, ResolvedVc, TryFlatJoinIterExt, Vc,
+    FxIndexSet, ResolvedVc, TryFlatJoinIterExt, ValueToString, Vc,
     graph::{AdjacencyMap, GraphTraversal},
 };
 use turbo_tasks_fs::{FileSystemPath, rebase};
@@ -59,6 +59,7 @@ pub async fn emit_assets(
                 let span = tracing::info_span!("emit asset", name = %path.value_to_string().await?);
                 async move {
                     Ok(if path.is_inside_ref(&node_root) {
+                        println!("Emitting asset: {}", path.value_to_string().await?);
                         Some(emit(*asset))
                     } else if path.is_inside_ref(&client_relative_path) {
                         // Client assets are emitted to the client output path, which is prefixed
@@ -84,6 +85,7 @@ pub async fn emit_assets(
 
 #[turbo_tasks::function]
 async fn emit(asset: Vc<Box<dyn OutputAsset>>) -> Result<()> {
+    println!("emit(), {}", asset.path().to_string().await?);
     let _ = asset
         .content()
         .write(asset.path().await?.clone_value())
