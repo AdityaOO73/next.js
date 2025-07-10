@@ -429,14 +429,14 @@ export function getSourceMapMiddleware(project: Project) {
       return middlewareResponse.noContent(res)
     }
 
+    // Turbopack chunk filenames might be URL-encoded.
+    filename = decodeURI(filename)
+
+    if (path.isAbsolute(filename)) {
+      filename = url.pathToFileURL(filename).href
+    }
+
     try {
-      // Turbopack chunk filenames might be URL-encoded.
-      filename = decodeURI(filename)
-
-      if (path.isAbsolute(filename)) {
-        filename = url.pathToFileURL(filename).href
-      }
-
       const sourceMapString = await project.getSourceMap(filename)
 
       if (sourceMapString) {
@@ -450,8 +450,16 @@ export function getSourceMapMiddleware(project: Project) {
           return middlewareResponse.json(res, sourceMap)
         }
       }
-    } catch (error) {
-      console.error('Failed to get source map:', error)
+    } catch (cause) {
+      return middlewareResponse.internalServerError(
+        res,
+        new Error(
+          `Failed to get source map for '${filename}'. This is a bug in Next.js`,
+          {
+            cause,
+          }
+        )
+      )
     }
 
     middlewareResponse.noContent(res)
