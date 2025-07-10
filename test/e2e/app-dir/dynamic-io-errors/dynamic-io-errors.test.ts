@@ -578,6 +578,7 @@ describe('Dynamic IO Errors', () => {
                  "stack": [
                    "<FIXME-file-protocol>",
                    "<FIXME-file-protocol>",
+                   "<FIXME-file-protocol>",
                    "LogSafely <anonymous>",
                  ],
                },
@@ -587,6 +588,7 @@ describe('Dynamic IO Errors', () => {
                  "label": "Console Error",
                  "source": null,
                  "stack": [
+                   "<FIXME-file-protocol>",
                    "<FIXME-file-protocol>",
                    "<FIXME-file-protocol>",
                    "LogSafely <anonymous>",
