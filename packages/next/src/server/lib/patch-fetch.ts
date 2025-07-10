@@ -520,7 +520,7 @@ export function createPatchedFetcher(
                     cacheSignal.endRead()
                     cacheSignal = null
                   }
-                  return makeHangingPromise<Response>(
+                  return await makeHangingPromise<Response>(
                     workUnitStore.renderSignal,
                     'fetch()'
                   )
@@ -910,7 +910,7 @@ export function createPatchedFetcher(
                     cacheSignal.endRead()
                     cacheSignal = null
                   }
-                  return makeHangingPromise<Response>(
+                  return await makeHangingPromise<Response>(
                     workUnitStore.renderSignal,
                     'fetch()'
                   )
@@ -938,7 +938,7 @@ export function createPatchedFetcher(
                 switch (workUnitStore.type) {
                   case 'prerender':
                   case 'prerender-client':
-                    return makeHangingPromise<Response>(
+                    return await makeHangingPromise<Response>(
                       workUnitStore.renderSignal,
                       'fetch()'
                     )
