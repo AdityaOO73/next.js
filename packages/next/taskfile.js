@@ -272,6 +272,7 @@ export async function ncc_node_stacktrace_parser(task, opts) {
     .target('src/compiled/stacktrace-parser')
 }
 
+// TODO: Check if this is used by anything. It's no longer used explicitly.
 externals['data-uri-to-buffer'] = 'next/dist/compiled/data-uri-to-buffer'
 externals['next/dist/compiled/data-uri-to-buffer'] =
   'next/dist/compiled/data-uri-to-buffer'

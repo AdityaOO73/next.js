@@ -19,8 +19,7 @@ import {
   type ModernSourceMapPayload,
   findApplicableSourceMapPayload,
 } from '../lib/source-maps'
-import { getSourceMapFromFile } from './get-source-map-from-file'
-import { findSourceMap } from 'node:module'
+import { findSourceMap, type SourceMap } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { inspect } from 'node:util'
 
@@ -429,6 +428,21 @@ export function getSourceMapMiddleware(project: Project) {
       return middlewareResponse.noContent(res)
     }
 
+    let nativeSourceMap: SourceMap | undefined
+    try {
+      nativeSourceMap = findSourceMap(filename)
+    } catch (cause) {
+      throw new Error(
+        `${filename}: Invalid source map. Only conformant source maps can be used to find the original code.`,
+        { cause }
+      )
+    }
+
+    if (nativeSourceMap !== undefined) {
+      const sourceMapPayload = nativeSourceMap.payload
+      return middlewareResponse.json(res, sourceMapPayload)
+    }
+
     // Turbopack chunk filenames might be URL-encoded.
     filename = decodeURI(filename)
 
@@ -441,14 +455,6 @@ export function getSourceMapMiddleware(project: Project) {
 
       if (sourceMapString) {
         return middlewareResponse.jsonString(res, sourceMapString)
-      }
-
-      if (filename.startsWith('file:')) {
-        const sourceMap = await getSourceMapFromFile(filename)
-
-        if (sourceMap) {
-          return middlewareResponse.json(res, sourceMap)
-        }
       }
     } catch (cause) {
       return middlewareResponse.internalServerError(

@@ -745,11 +745,6 @@ declare module 'next/dist/compiled/css.escape' {
   export = CSS.escape
 }
 
-declare module 'next/dist/compiled/data-uri-to-buffer' {
-  import m from 'data-uri-to-buffer'
-  export = m
-}
-
 declare module 'next/dist/compiled/shell-quote' {
   import * as m from 'shell-quote'
   export = m
