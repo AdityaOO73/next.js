@@ -40,13 +40,6 @@ function stringifySourceInfo(
   }
 }
 
-type ExternalRequire = (
-  id: ModuleId,
-  thunk: () => any,
-  esm?: boolean
-) => Exports | EsmNamespaceObject
-type ExternalImport = (id: ModuleId) => Promise<Exports | EsmNamespaceObject>
-
 interface TurbopackNodeBuildContext extends TurbopackBaseContext<Module> {
   R: ResolvePathFromModule
   x: ExternalRequire
@@ -88,23 +81,18 @@ function resolvePathFromModule(
 }
 nodeContextPrototype.R = resolvePathFromModule
 
-function loadChunk(
-  sourceType: SourceType,
-  sourceData: SourceData,
-  chunkData: ChunkData
-): void {
+function loadRuntimeChunk(sourcePath: ChunkPath, chunkData: ChunkData): void {
   if (typeof chunkData === 'string') {
-    return loadChunkPath(sourceType, sourceData, chunkData)
+    return loadRuntimeChunkPath(sourcePath, chunkData)
   } else {
-    return loadChunkPath(sourceType, sourceData, chunkData.path)
+    return loadRuntimeChunkPath(sourcePath, chunkData.path)
   }
 }
 
 const loadedChunks = new Set<ChunkPath>()
 
-function loadChunkPath(
-  sourceType: SourceType,
-  sourceData: SourceData,
+function loadRuntimeChunkPath(
+  sourcePath: ChunkPath,
   chunkPath: ChunkPath
 ): void {
   if (!isJs(chunkPath)) {
@@ -138,8 +126,8 @@ function loadChunkPath(
   } catch (e) {
     let errorMessage = `Failed to load chunk ${chunkPath}`
 
-    if (sourceType !== undefined) {
-      errorMessage += ` from ${stringifySourceInfo(sourceType, sourceData)}`
+    if (sourcePath) {
+      errorMessage += ` from runtime for chunk ${sourcePath}`
     }
 
     throw new Error(errorMessage, {
@@ -149,8 +137,7 @@ function loadChunkPath(
 }
 
 async function loadChunkAsync(
-  sourceType: SourceType,
-  sourceData: SourceData,
+  this: TurbopackBaseContext<Module>,
   chunkData: ChunkData
 ): Promise<any> {
   const chunkPath = typeof chunkData === 'string' ? chunkData : chunkData.path
@@ -202,26 +189,24 @@ async function loadChunkAsync(
     }
     loadedChunks.add(chunkPath)
   } catch (e) {
-    let errorMessage = `Failed to load chunk ${chunkPath}`
-
-    if (sourceType !== undefined) {
-      errorMessage += ` from ${stringifySourceInfo(sourceType, sourceData)}`
-    }
-
-    throw new Error(errorMessage, {
-      cause: e,
-    })
+    throw new Error(
+      `Failed to load chunk ${chunkPath} from module ${this.m.id}`,
+      {
+        cause: e,
+      }
+    )
   }
 }
+contextPrototype.l = loadChunkAsync
 
 async function loadChunkAsyncByUrl(
-  sourceType: SourceType,
-  sourceData: SourceData,
+  this: TurbopackBaseContext<Module>,
   chunkUrl: string
 ) {
   const path = url.fileURLToPath(new URL(chunkUrl, RUNTIME_ROOT)) as ChunkPath
-  return loadChunkAsync(sourceType, sourceData, path)
+  return loadChunkAsync.call(this, path)
 }
+contextPrototype.L = loadChunkAsyncByUrl
 
 function loadWebAssembly(
   chunkPath: ChunkPath,
@@ -291,15 +276,7 @@ function instantiateModule(
   // NOTE(alexkirsz) This can fail when the module encounters a runtime error.
   try {
     const context = new (Context as any as ContextConstructor<Module>)(module)
-    moduleFactory.call(
-      module.exports,
-      Object.assign(context, {
-        x: externalRequire,
-        y: externalImport,
-        l: loadChunkAsync.bind(null, SourceType.Parent, id),
-        L: loadChunkAsyncByUrl.bind(null, SourceType.Parent, id),
-      })
-    )
+    moduleFactory.call(module.exports, context)
   } catch (error) {
     module.error = error as any
     throw error
@@ -370,6 +347,5 @@ function isJs(chunkUrlOrPath: ChunkUrl | ChunkPath): boolean {
 
 module.exports = (sourcePath: ChunkPath) => ({
   m: (id: ModuleId) => getOrInstantiateRuntimeModule(sourcePath, id),
-  c: (chunkData: ChunkData) =>
-    loadChunk(SourceType.Runtime, sourcePath, chunkData),
+  c: (chunkData: ChunkData) => loadRuntimeChunk(sourcePath, chunkData),
 })
