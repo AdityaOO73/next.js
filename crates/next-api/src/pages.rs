@@ -702,6 +702,18 @@ enum SsrChunkType {
     Api,
 }
 
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TaskInput, TraceRawVcs,
+)]
+enum EmitManifests {
+    /// Don't emit any manifests
+    None,
+    /// Emit the manifest for basic Next.js functionality (e.g. pages-manifest.json)
+    Minimal,
+    /// All manifests: `Minimal` plus server-reference-manifest, next/font, next/dynamic
+    Full,
+}
+
 #[turbo_tasks::value_impl]
 impl PageEndpoint {
     #[turbo_tasks::function]
@@ -971,6 +983,7 @@ impl PageEndpoint {
     async fn internal_ssr_chunk(
         self: Vc<Self>,
         ty: SsrChunkType,
+        emit_manifests: EmitManifests,
         node_path: FileSystemPath,
         node_chunking_context: Vc<NodeJsChunkingContext>,
         edge_chunking_context: Vc<Box<dyn ChunkingContext>>,
@@ -1136,19 +1149,22 @@ impl PageEndpoint {
                     .await?
                     .is_production()
                 {
-                    let loadable_manifest_output =
-                        self.react_loadable_manifest(*dynamic_import_entries, NextRuntime::NodeJs);
+                    let additional_assets = if emit_manifests == EmitManifests::Full {
+                        self.react_loadable_manifest(*dynamic_import_entries, NextRuntime::NodeJs)
+                            .await?
+                            .iter()
+                            .map(|m| **m)
+                            .collect()
+                    } else {
+                        vec![]
+                    };
 
                     ResolvedVc::cell(Some(ResolvedVc::upcast(
                         NftJsonAsset::new(
                             project,
                             Some(this.original_name.clone()),
                             *ssr_entry_chunk,
-                            loadable_manifest_output
-                                .await?
-                                .iter()
-                                .map(|m| **m)
-                                .collect(),
+                            additional_assets,
                         )
                         .to_resolved()
                         .await?,
@@ -1174,11 +1190,12 @@ impl PageEndpoint {
     }
 
     #[turbo_tasks::function]
-    async fn ssr_chunk(self: Vc<Self>) -> Result<Vc<SsrChunk>> {
+    async fn ssr_chunk(self: Vc<Self>, emit_manifests: EmitManifests) -> Result<Vc<SsrChunk>> {
         let this = self.await?;
         let project = this.pages_project.project();
         Ok(self.internal_ssr_chunk(
             SsrChunkType::Page,
+            emit_manifests,
             this.pages_project
                 .project()
                 .node_root()
@@ -1192,10 +1209,11 @@ impl PageEndpoint {
     }
 
     #[turbo_tasks::function]
-    async fn ssr_data_chunk(self: Vc<Self>) -> Result<Vc<SsrChunk>> {
+    async fn ssr_data_chunk(self: Vc<Self>, emit_manifests: EmitManifests) -> Result<Vc<SsrChunk>> {
         let this = self.await?;
         Ok(self.internal_ssr_chunk(
             SsrChunkType::Data,
+            emit_manifests,
             this.pages_project
                 .project()
                 .node_root()
@@ -1209,10 +1227,11 @@ impl PageEndpoint {
     }
 
     #[turbo_tasks::function]
-    async fn api_chunk(self: Vc<Self>) -> Result<Vc<SsrChunk>> {
+    async fn api_chunk(self: Vc<Self>, emit_manifests: EmitManifests) -> Result<Vc<SsrChunk>> {
         let this = self.await?;
         Ok(self.internal_ssr_chunk(
             SsrChunkType::Api,
+            emit_manifests,
             this.pages_project
                 .project()
                 .node_root()
@@ -1313,6 +1332,12 @@ impl PageEndpoint {
         let mut server_assets = vec![];
         let mut client_assets = vec![];
 
+        let emit_manifests = match this.ty {
+            PageEndpointType::Html | PageEndpointType::SsrOnly => EmitManifests::Full,
+            PageEndpointType::Api => EmitManifests::Minimal,
+            PageEndpointType::Data => EmitManifests::None,
+        };
+
         let ssr_chunk = match this.ty {
             PageEndpointType::Html => {
                 let client_chunks = *self.client_chunks().await?.assets;
@@ -1321,26 +1346,11 @@ impl PageEndpoint {
                 let page_loader = self.page_loader(client_chunks);
                 client_assets.push(page_loader);
                 server_assets.push(build_manifest);
-                self.ssr_chunk()
+                self.ssr_chunk(emit_manifests)
             }
-            PageEndpointType::Data => self.ssr_data_chunk(),
-            PageEndpointType::Api => self.api_chunk(),
-            PageEndpointType::SsrOnly => self.ssr_chunk(),
-        };
-
-        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-        enum EmitManifests {
-            /// Don't emit any manifests
-            None,
-            /// Emit the manifest for basic Next.js functionality (e.g. pages-manifest.json)
-            Minimal,
-            /// All manifests: `Minimal` plus server-reference-manifest, next/font, next/dynamic
-            Full,
-        }
-        let emit_manifests = match this.ty {
-            PageEndpointType::Html | PageEndpointType::SsrOnly => EmitManifests::Full,
-            PageEndpointType::Api => EmitManifests::Minimal,
-            PageEndpointType::Data => EmitManifests::None,
+            PageEndpointType::Data => self.ssr_data_chunk(emit_manifests),
+            PageEndpointType::Api => self.api_chunk(emit_manifests),
+            PageEndpointType::SsrOnly => self.ssr_chunk(emit_manifests),
         };
 
         let pathname = &this.pathname;
