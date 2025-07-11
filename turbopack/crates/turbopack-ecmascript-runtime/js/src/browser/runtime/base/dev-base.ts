@@ -123,10 +123,7 @@ const getOrInstantiateModuleFromParent: GetOrInstantiateModuleFromParent<
     return module
   }
 
-  return instantiateModule(id, {
-    type: SourceType.Parent,
-    parentId: sourceModule.id,
-  })
+  return instantiateModule(id, SourceType.Parent, sourceModule.id)
 }
 
 function instantiateModule(
@@ -564,10 +561,11 @@ function applyPhase(
   // Re-instantiate all outdated self-accepted modules.
   for (const { moduleId, errorHandler } of outdatedSelfAcceptedModules) {
     try {
-      instantiateModule(moduleId, {
-        type: SourceType.Update,
-        parents: outdatedModuleParents.get(moduleId),
-      })
+      instantiateModule(
+        moduleId,
+        SourceType.Update,
+        outdatedModuleParents.get(moduleId)
+      )
     } catch (err) {
       if (typeof errorHandler === 'function') {
         try {
