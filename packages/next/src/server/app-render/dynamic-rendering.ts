@@ -191,7 +191,7 @@ export function trackFallbackParamAccessed(
 }
 
 /**
- * This function is meant to be used when prerendering without dynamicIO or PPR.
+ * This function is meant to be used when prerendering without cacheComponents or PPR.
  * When called during a build it will cause Next.js to consider the route as dynamic.
  *
  * @internal
@@ -304,12 +304,12 @@ export function trackSynchronousPlatformIOAccessInDev(
 }
 
 /**
- * use this function when prerendering with dynamicIO. If we are doing a
+ * use this function when prerendering with cacheComponents. If we are doing a
  * prospective prerender we don't actually abort because we want to discover
  * all caches for the shell. If this is the actual prerender we do abort.
  *
  * This function accepts a prerenderStore but the caller should ensure we're
- * actually running in dynamicIO mode.
+ * actually running in cacheComponents mode.
  *
  * @internal
  */
@@ -580,9 +580,9 @@ export function useDynamicRouteParams(expression: string) {
     // accesses.
     const workUnitStore = workUnitAsyncStorage.getStore()
     if (workUnitStore) {
-      // We're prerendering with dynamicIO or PPR or both
+      // We're prerendering with cacheComponents or PPR or both
       if (workUnitStore.type === 'prerender-client') {
-        // We are in a prerender with dynamicIO semantics
+        // We are in a prerender with cacheComponents semantics
         // We are going to hang here and never resolve. This will cause the currently
         // rendering component to effectively be a dynamic hole
         React.use(makeHangingPromise(workUnitStore.renderSignal, expression))

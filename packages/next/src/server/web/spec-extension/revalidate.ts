@@ -110,7 +110,7 @@ function revalidate(tags: string[], expression: string) {
 
     switch (workUnitStore.type) {
       case 'prerender':
-        // dynamicIO Prerender
+        // cacheComponents Prerender
         const error = new Error(
           `Route ${store.route} used ${expression} without first calling \`await connection()\`.`
         )

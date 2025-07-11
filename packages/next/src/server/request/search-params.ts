@@ -117,8 +117,8 @@ export function createPrerenderSearchParamsForClientPage(
     (prerenderStore.type === 'prerender' ||
       prerenderStore.type === 'prerender-client')
   ) {
-    // dynamicIO Prerender
-    // We're prerendering in a mode that aborts (dynamicIO) and should stall
+    // cacheComponents Prerender
+    // We're prerendering in a mode that aborts (cacheComponents) and should stall
     // the promise to ensure the RSC side is considered dynamic
     return makeHangingPromise(prerenderStore.renderSignal, '`searchParams`')
   }
@@ -141,7 +141,7 @@ function createPrerenderSearchParams(
   switch (prerenderStore.type) {
     case 'prerender':
     case 'prerender-client':
-      // We are in a dynamicIO (PPR or otherwise) prerender
+      // We are in a cacheComponents (PPR or otherwise) prerender
       return makeHangingSearchParams(prerenderStore)
     default:
       // The remaining cases are prerender-ppr and prerender-legacy
@@ -164,7 +164,7 @@ function createRenderSearchParams(
       process.env.NODE_ENV === 'development' &&
       !workStore.isPrefetchRequest
     ) {
-      if (process.env.__NEXT_DYNAMIC_IO) {
+      if (process.env.__NEXT_CACHE_COMPONENTS) {
         return makeUntrackedSearchParamsWithDevWarnings(
           underlyingSearchParams,
           workStore
@@ -176,7 +176,7 @@ function createRenderSearchParams(
         workStore
       )
     } else {
-      if (process.env.__NEXT_DYNAMIC_IO) {
+      if (process.env.__NEXT_CACHE_COMPONENTS) {
         return makeUntrackedSearchParams(underlyingSearchParams)
       }
 
@@ -274,7 +274,7 @@ function makeErroringExoticSearchParams(
               expression
             )
           } else if (prerenderStore.type === 'prerender-ppr') {
-            // PPR Prerender (no dynamicIO)
+            // PPR Prerender (no cacheComponents)
             postponeWithTracking(
               workStore.route,
               expression,
@@ -299,7 +299,7 @@ function makeErroringExoticSearchParams(
               expression
             )
           } else if (prerenderStore.type === 'prerender-ppr') {
-            // PPR Prerender (no dynamicIO)
+            // PPR Prerender (no cacheComponents)
             postponeWithTracking(
               workStore.route,
               expression,
@@ -327,7 +327,7 @@ function makeErroringExoticSearchParams(
                 expression
               )
             } else if (prerenderStore.type === 'prerender-ppr') {
-              // PPR Prerender (no dynamicIO)
+              // PPR Prerender (no cacheComponents)
               postponeWithTracking(
                 workStore.route,
                 expression,
@@ -362,7 +362,7 @@ function makeErroringExoticSearchParams(
             expression
           )
         } else if (prerenderStore.type === 'prerender-ppr') {
-          // PPR Prerender (no dynamicIO)
+          // PPR Prerender (no cacheComponents)
           postponeWithTracking(
             workStore.route,
             expression,
@@ -389,7 +389,7 @@ function makeErroringExoticSearchParams(
           expression
         )
       } else if (prerenderStore.type === 'prerender-ppr') {
-        // PPR Prerender (no dynamicIO)
+        // PPR Prerender (no cacheComponents)
         postponeWithTracking(
           workStore.route,
           expression,
