@@ -45,7 +45,7 @@ type ChunkList = {
   source: 'entry' | 'dynamic'
 }
 
-const enum SourceType {
+enum SourceType {
   /**
    * The module was instantiated because it was included in an evaluated chunk's
    * runtime.

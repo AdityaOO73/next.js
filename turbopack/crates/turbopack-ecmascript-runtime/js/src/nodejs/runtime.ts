@@ -5,7 +5,7 @@
 /// <reference path="../shared-node/node-externals-utils.ts" />
 /// <reference path="../shared-node/node-wasm-utils.ts" />
 
-const enum SourceType {
+enum SourceType {
   /**
    * The module was instantiated because it was included in an evaluated chunk's
    * runtime.
