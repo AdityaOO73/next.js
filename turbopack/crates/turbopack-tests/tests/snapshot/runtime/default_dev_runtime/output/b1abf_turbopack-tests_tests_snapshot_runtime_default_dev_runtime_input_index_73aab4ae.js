@@ -280,7 +280,8 @@ function wrapDeps(deps) {
         };
     });
 }
-function asyncModule(module, body, hasAwait) {
+function asyncModule(body, hasAwait) {
+    const module = this.m;
     const queue = hasAwait ? Object.assign([], {
         status: -1
     }) : undefined;
@@ -376,6 +377,13 @@ relativeURL.prototype = URL.prototype;
  */ function requireStub(_moduleId) {
     throw new Error('dynamic usage of require is not supported');
 }
+/**
+ * Constructs the `__turbopack_context__` object for a module.
+ */ function Context(module) {
+    this.m = module;
+    this.e = module.exports;
+}
+Context.prototype.a = asyncModule;
 /**
  * This file contains runtime types and functions that are shared between all
  * Turbopack *development* ECMAScript runtimes.
@@ -753,9 +761,8 @@ function instantiateModule(moduleId, sourceType, sourceData) {
     try {
         runModuleExecutionHooks(module, (refresh)=>{
             const r = commonJsRequire.bind(null, module);
-            moduleFactory(augmentContext({
-                a: asyncModule.bind(null, module),
-                e: module.exports,
+            const context = new Context(module);
+            moduleFactory(Object.assign(context, {
                 r: commonJsRequire.bind(null, module),
                 t: runtimeRequire,
                 f: moduleContext,
@@ -764,7 +771,6 @@ function instantiateModule(moduleId, sourceType, sourceData) {
                 j: dynamicExport.bind(null, module, module.exports, devModuleCache),
                 v: exportValue.bind(null, module, devModuleCache),
                 n: exportNamespace.bind(null, module, devModuleCache),
-                m: module,
                 c: devModuleCache,
                 M: moduleFactories,
                 l: loadChunk.bind(null, SourceType.Parent, id),
@@ -1460,9 +1466,6 @@ globalThis.TURBOPACK_CHUNK_UPDATE_LISTENERS ??= [];
  */ /* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="../../../browser/runtime/base/runtime-base.ts" />
 /// <reference path="../../../shared/runtime-types.d.ts" />
 let BACKEND;
-function augmentContext(context) {
-    return context;
-}
 function fetchWebAssembly(wasmChunkPath) {
     return fetch(getChunkRelativeUrl(wasmChunkPath));
 }
