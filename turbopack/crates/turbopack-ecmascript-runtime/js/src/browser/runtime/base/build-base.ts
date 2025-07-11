@@ -11,8 +11,8 @@ const moduleCache: ModuleCache<Module> = {}
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getOrInstantiateRuntimeModule(
-  moduleId: ModuleId,
-  chunkPath: ChunkPath
+  chunkPath: ChunkPath,
+  moduleId: ModuleId
 ): Module {
   const module = moduleCache[moduleId]
   if (module) {

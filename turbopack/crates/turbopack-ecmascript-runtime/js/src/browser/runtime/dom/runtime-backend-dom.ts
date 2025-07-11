@@ -87,7 +87,7 @@ const chunkResolvers: Map<ChunkUrl, ChunkResolver> = new Map()
 
       if (params.runtimeModuleIds.length > 0) {
         for (const moduleId of params.runtimeModuleIds) {
-          getOrInstantiateRuntimeModule(moduleId, chunkPath)
+          getOrInstantiateRuntimeModule(chunkPath, moduleId)
         }
       }
     },

@@ -81,8 +81,8 @@ const queuedInvalidatedModules: Set<ModuleId> = new Set()
  */
 // @ts-ignore
 function getOrInstantiateRuntimeModule(
-  moduleId: ModuleId,
-  chunkPath: ChunkPath
+  chunkPath: ChunkPath,
+  moduleId: ModuleId
 ): Module {
   const module = devModuleCache[moduleId]
   if (module) {

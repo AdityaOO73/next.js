@@ -200,7 +200,7 @@ async function loadWebAssemblyModule(
     chunkPath: ChunkPath
   ) {
     for (const moduleId of runtimeModuleIds) {
-      getOrInstantiateRuntimeModule(moduleId, chunkPath)
+      getOrInstantiateRuntimeModule(chunkPath, moduleId)
     }
   }
 })()
