@@ -29,7 +29,8 @@ function fetchWebAssembly(wasmChunkPath: ChunkPath) {
 }
 
 async function loadWebAssembly(
-  _source: unknown,
+  _sourceType: SourceType,
+  _sourceData: SourceData,
   wasmChunkPath: ChunkPath,
   _edgeModule: () => WebAssembly.Module,
   importsObj: WebAssembly.Imports
@@ -42,7 +43,8 @@ async function loadWebAssembly(
 }
 
 async function loadWebAssemblyModule(
-  _source: unknown,
+  _sourceType: SourceType,
+  _sourceData: SourceData,
   wasmChunkPath: ChunkPath,
   _edgeModule: () => WebAssembly.Module
 ): Promise<WebAssembly.Module> {
@@ -79,7 +81,7 @@ const chunkResolvers: Map<ChunkUrl, ChunkResolver> = new Map()
       // This waits for chunks to be loaded, but also marks included items as available.
       await Promise.all(
         params.otherChunks.map((otherChunkData) =>
-          loadChunk({ type: SourceType.Runtime, chunkPath }, otherChunkData)
+          loadChunk(SourceType.Runtime, chunkPath, otherChunkData)
         )
       )
 
@@ -94,8 +96,12 @@ const chunkResolvers: Map<ChunkUrl, ChunkResolver> = new Map()
      * Loads the given chunk, and returns a promise that resolves once the chunk
      * has been loaded.
      */
-    loadChunk(chunkUrl, source) {
-      return doLoadChunk(chunkUrl, source)
+    loadChunk(
+      sourceType: SourceType,
+      sourceData: SourceData,
+      chunkUrl: ChunkUrl
+    ) {
+      return doLoadChunk(sourceType, sourceData, chunkUrl)
     },
   }
 
@@ -127,13 +133,17 @@ const chunkResolvers: Map<ChunkUrl, ChunkResolver> = new Map()
    * Loads the given chunk, and returns a promise that resolves once the chunk
    * has been loaded.
    */
-  function doLoadChunk(chunkUrl: ChunkUrl, source: SourceInfo) {
+  function doLoadChunk(
+    sourceType: SourceType,
+    _sourceData: SourceData,
+    chunkUrl: ChunkUrl
+  ) {
     const resolver = getOrCreateResolver(chunkUrl)
     if (resolver.loadingStarted) {
       return resolver.promise
     }
 
-    if (source.type === SourceType.Runtime) {
+    if (sourceType === SourceType.Runtime) {
       // We don't need to load chunks references from runtime code, as they're already
       // present in the DOM.
       resolver.loadingStarted = true

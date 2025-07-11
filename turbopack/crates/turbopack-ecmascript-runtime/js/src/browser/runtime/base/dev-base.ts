@@ -129,7 +129,11 @@ const getOrInstantiateModuleFromParent: GetOrInstantiateModuleFromParent<
   })
 }
 
-function instantiateModule(moduleId: ModuleId, source: SourceInfo): Module {
+function instantiateModule(
+  moduleId: ModuleId,
+  sourceType: SourceType,
+  sourceData: SourceData
+): Module {
   // We are in development, this is always a string.
   let id = moduleId as string
 
@@ -139,18 +143,21 @@ function instantiateModule(moduleId: ModuleId, source: SourceInfo): Module {
     // e.g. when they keep a `setTimeout` around which still executes old code
     // and contains e.g. a `require("something")` call.
     let instantiationReason
-    switch (source.type) {
+    switch (sourceType) {
       case SourceType.Runtime:
-        instantiationReason = `as a runtime entry of chunk ${source.chunkPath}`
+        instantiationReason = `as a runtime entry of chunk ${sourceData}`
         break
       case SourceType.Parent:
-        instantiationReason = `because it was required from module ${source.parentId}`
+        instantiationReason = `because it was required from module ${sourceData}`
         break
       case SourceType.Update:
         instantiationReason = 'because of an HMR update'
         break
       default:
-        invariant(source, (source) => `Unknown source type: ${source?.type}`)
+        invariant(
+          sourceType,
+          (sourceType) => `Unknown source type: ${sourceType}`
+        )
     }
     throw new Error(
       `Module ${id} was instantiated ${instantiationReason}, but the module factory is not available. It might have been deleted in an HMR update.`
@@ -161,7 +168,7 @@ function instantiateModule(moduleId: ModuleId, source: SourceInfo): Module {
   const { hot, hotState } = createModuleHot(id, hotData)
 
   let parents: ModuleId[]
-  switch (source.type) {
+  switch (sourceType) {
     case SourceType.Runtime:
       runtimeModules.add(id)
       parents = []
@@ -169,13 +176,16 @@ function instantiateModule(moduleId: ModuleId, source: SourceInfo): Module {
     case SourceType.Parent:
       // No need to add this module as a child of the parent module here, this
       // has already been taken care of in `getOrInstantiateModuleFromParent`.
-      parents = [source.parentId]
+      parents = [sourceData as ModuleId]
       break
     case SourceType.Update:
-      parents = source.parents || []
+      parents = (sourceData as ModuleId[]) || []
       break
     default:
-      invariant(source, (source) => `Unknown source type: ${source?.type}`)
+      invariant(
+        sourceType,
+        (sourceType) => `Unknown source type: ${sourceType}`
+      )
   }
 
   const module: HotModule = {
@@ -194,8 +204,6 @@ function instantiateModule(moduleId: ModuleId, source: SourceInfo): Module {
 
   // NOTE(alexkirsz) This can fail when the module encounters a runtime error.
   try {
-    const sourceInfo: SourceInfo = { type: SourceType.Parent, parentId: id }
-
     runModuleExecutionHooks(module, (refresh) => {
       const r = commonJsRequire.bind(null, module)
       moduleFactory(
@@ -213,10 +221,10 @@ function instantiateModule(moduleId: ModuleId, source: SourceInfo): Module {
           m: module,
           c: devModuleCache,
           M: moduleFactories,
-          l: loadChunk.bind(null, sourceInfo),
-          L: loadChunkByUrl.bind(null, sourceInfo),
-          w: loadWebAssembly.bind(null, sourceInfo),
-          u: loadWebAssemblyModule.bind(null, sourceInfo),
+          l: loadChunk.bind(null, SourceType.Parent, id),
+          L: loadChunkByUrl.bind(null, SourceType.Parent, id),
+          w: loadWebAssembly.bind(null, SourceType.Parent, id),
+          u: loadWebAssemblyModule.bind(null, SourceType.Parent, id),
           P: resolveAbsolutePath,
           U: relativeURL,
           k: refresh,
@@ -606,7 +614,7 @@ function applyChunkListUpdate(update: ChunkListUpdate) {
 
       switch (chunkUpdate.type) {
         case 'added':
-          BACKEND.loadChunk(chunkUrl, { type: SourceType.Update })
+          BACKEND.loadChunk(SourceType.Update, undefined, chunkUrl)
           break
         case 'total':
           DEV_BACKEND.reloadChunk?.(chunkUrl)

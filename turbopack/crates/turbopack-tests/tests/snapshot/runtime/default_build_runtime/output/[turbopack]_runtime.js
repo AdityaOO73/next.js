@@ -449,25 +449,15 @@ async function instantiateWebAssemblyFromPath(path, importsObj) {
 /// <reference path="../shared-node/base-externals-utils.ts" />
 /// <reference path="../shared-node/node-externals-utils.ts" />
 /// <reference path="../shared-node/node-wasm-utils.ts" />
-var SourceType = /*#__PURE__*/ function(SourceType) {
-    /**
-   * The module was instantiated because it was included in an evaluated chunk's
-   * runtime.
-   */ SourceType[SourceType["Runtime"] = 0] = "Runtime";
-    /**
-   * The module was instantiated because a parent module imported it.
-   */ SourceType[SourceType["Parent"] = 1] = "Parent";
-    return SourceType;
-}(SourceType || {});
 process.env.TURBOPACK = '1';
-function stringifySourceInfo(source) {
-    switch(source.type){
+function stringifySourceInfo(sourceType, sourceData) {
+    switch(sourceType){
         case 0:
-            return `runtime for chunk ${source.chunkPath}`;
+            return `runtime for chunk ${sourceData}`;
         case 1:
-            return `parent module ${source.parentId}`;
+            return `parent module ${sourceData}`;
         default:
-            invariant(source, (source)=>`Unknown source type: ${source?.type}`);
+            invariant(sourceType, (sourceType)=>`Unknown source type: ${sourceType}`);
     }
 }
 const url = require('url');
@@ -488,15 +478,15 @@ const moduleCache = Object.create(null);
         return url.pathToFileURL(resolved).href;
     };
 }
-function loadChunk(chunkData, source) {
+function loadChunk(sourceType, sourceData, chunkData) {
     if (typeof chunkData === 'string') {
-        return loadChunkPath(chunkData, source);
+        return loadChunkPath(sourceType, sourceData, chunkData);
     } else {
-        return loadChunkPath(chunkData.path, source);
+        return loadChunkPath(sourceType, sourceData, chunkData.path);
     }
 }
 const loadedChunks = new Set();
-function loadChunkPath(chunkPath, source) {
+function loadChunkPath(sourceType, sourceData, chunkPath) {
     if (!isJs(chunkPath)) {
         // We only support loading JS chunks in Node.js.
         // This branch can be hit when trying to load a CSS chunk.
@@ -524,15 +514,15 @@ function loadChunkPath(chunkPath, source) {
         loadedChunks.add(chunkPath);
     } catch (e) {
         let errorMessage = `Failed to load chunk ${chunkPath}`;
-        if (source) {
-            errorMessage += ` from ${stringifySourceInfo(source)}`;
+        if (sourceType !== undefined) {
+            errorMessage += ` from ${stringifySourceInfo(sourceType, sourceData)}`;
         }
         throw new Error(errorMessage, {
             cause: e
         });
     }
 }
-async function loadChunkAsync(source, chunkData) {
+async function loadChunkAsync(sourceType, sourceData, chunkData) {
     const chunkPath = typeof chunkData === 'string' ? chunkData : chunkData.path;
     if (!isJs(chunkPath)) {
         // We only support loading JS chunks in Node.js.
@@ -574,17 +564,17 @@ async function loadChunkAsync(source, chunkData) {
         loadedChunks.add(chunkPath);
     } catch (e) {
         let errorMessage = `Failed to load chunk ${chunkPath}`;
-        if (source) {
-            errorMessage += ` from ${stringifySourceInfo(source)}`;
+        if (sourceType !== undefined) {
+            errorMessage += ` from ${stringifySourceInfo(sourceType, sourceData)}`;
         }
         throw new Error(errorMessage, {
             cause: e
         });
     }
 }
-async function loadChunkAsyncByUrl(source, chunkUrl) {
+async function loadChunkAsyncByUrl(sourceType, sourceData, chunkUrl) {
     const path1 = url.fileURLToPath(new URL(chunkUrl, RUNTIME_ROOT));
-    return loadChunkAsync(source, path1);
+    return loadChunkAsync(sourceType, sourceData, path1);
 }
 function loadWebAssembly(chunkPath, _edgeModule, imports) {
     const resolved = path.resolve(RUNTIME_ROOT, chunkPath);
@@ -597,24 +587,24 @@ function loadWebAssemblyModule(chunkPath, _edgeModule) {
 function getWorkerBlobURL(_chunks) {
     throw new Error('Worker blobs are not implemented yet for Node.js');
 }
-function instantiateModule(id, source) {
+function instantiateModule(id, sourceType, sourceData) {
     const moduleFactory = moduleFactories[id];
     if (typeof moduleFactory !== 'function') {
         // This can happen if modules incorrectly handle HMR disposes/updates,
         // e.g. when they keep a `setTimeout` around which still executes old code
         // and contains e.g. a `require("something")` call.
         let instantiationReason;
-        switch(source.type){
+        switch(sourceType){
             case 0:
-                instantiationReason = `as a runtime entry of chunk ${source.chunkPath}`;
+                instantiationReason = `as a runtime entry of chunk ${sourceData}`;
                 break;
             case 1:
-                instantiationReason = `because it was required from module ${source.parentId}`;
+                instantiationReason = `because it was required from module ${sourceData}`;
                 break;
             default:
-                invariant(source, (source)=>`Unknown source type: ${source?.type}`);
+                invariant(sourceType, (sourceType)=>`Unknown source type: ${sourceType}`);
         }
-        throw new Error(`Module ${id} was instantiated ${instantiationReason}, but the module factory is not available. It might have been deleted in an HMR update.`);
+        throw new Error(`Module ${id} was instantiated ${instantiationReason}, but the module factory is not available.`);
     }
     const module1 = {
         exports: {},
@@ -643,14 +633,8 @@ function instantiateModule(id, source) {
             m: module1,
             c: moduleCache,
             M: moduleFactories,
-            l: loadChunkAsync.bind(null, {
-                type: 1,
-                parentId: id
-            }),
-            L: loadChunkAsyncByUrl.bind(null, {
-                type: 1,
-                parentId: id
-            }),
+            l: loadChunkAsync.bind(null, 1, id),
+            L: loadChunkAsyncByUrl.bind(null, 1, id),
             w: loadWebAssembly,
             u: loadWebAssemblyModule,
             P: resolveAbsolutePath,
@@ -678,23 +662,17 @@ function getOrInstantiateModuleFromParent(id, sourceModule) {
     if (module1) {
         return module1;
     }
-    return instantiateModule(id, {
-        type: 1,
-        parentId: sourceModule.id
-    });
+    return instantiateModule(id, 1, sourceModule.id);
 }
 /**
  * Instantiates a runtime module.
- */ function instantiateRuntimeModule(moduleId, chunkPath) {
-    return instantiateModule(moduleId, {
-        type: 0,
-        chunkPath
-    });
+ */ function instantiateRuntimeModule(chunkPath, moduleId) {
+    return instantiateModule(moduleId, 0, chunkPath);
 }
 /**
  * Retrieves a module from the cache, or instantiate it as a runtime module if it is not cached.
  */ // @ts-ignore TypeScript doesn't separate this module space from the browser runtime
-function getOrInstantiateRuntimeModule(moduleId, chunkPath) {
+function getOrInstantiateRuntimeModule(chunkPath, moduleId) {
     const module1 = moduleCache[moduleId];
     if (module1) {
         if (module1.error) {
@@ -702,7 +680,7 @@ function getOrInstantiateRuntimeModule(moduleId, chunkPath) {
         }
         return module1;
     }
-    return instantiateRuntimeModule(moduleId, chunkPath);
+    return instantiateRuntimeModule(chunkPath, moduleId);
 }
 const regexJsUrl = /\.js(?:\?[^#]*)?(?:#.*)?$/;
 /**
@@ -710,10 +688,10 @@ const regexJsUrl = /\.js(?:\?[^#]*)?(?:#.*)?$/;
  */ function isJs(chunkUrlOrPath) {
     return regexJsUrl.test(chunkUrlOrPath);
 }
-module.exports = {
-    getOrInstantiateRuntimeModule,
-    loadChunk
-};
+module.exports = (sourcePath)=>({
+        m: (id)=>getOrInstantiateRuntimeModule(sourcePath, id),
+        c: (chunkData)=>loadChunk(0, sourcePath, chunkData)
+    });
 
 
 //# sourceMappingURL=%5Bturbopack%5D_runtime.js.map
