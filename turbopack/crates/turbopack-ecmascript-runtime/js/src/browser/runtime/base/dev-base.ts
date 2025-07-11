@@ -93,7 +93,7 @@ function getOrInstantiateRuntimeModule(
   }
 
   // @ts-ignore
-  return instantiateModule(moduleId, { type: SourceType.Runtime, chunkPath })
+  return instantiateModule(moduleId, SourceType.Runtime, chunkPath)
 }
 
 /**

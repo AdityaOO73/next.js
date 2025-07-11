@@ -449,6 +449,18 @@ async function instantiateWebAssemblyFromPath(path, importsObj) {
 /// <reference path="../shared-node/base-externals-utils.ts" />
 /// <reference path="../shared-node/node-externals-utils.ts" />
 /// <reference path="../shared-node/node-wasm-utils.ts" />
+var SourceType = /*#__PURE__*/ function(SourceType) {
+    /**
+   * The module was instantiated because it was included in an evaluated chunk's
+   * runtime.
+   * SourceData is a ChunkPath.
+   */ SourceType[SourceType["Runtime"] = 0] = "Runtime";
+    /**
+   * The module was instantiated because a parent module imported it.
+   * SourceData is a ModuleId.
+   */ SourceType[SourceType["Parent"] = 1] = "Parent";
+    return SourceType;
+}(SourceType || {});
 process.env.TURBOPACK = '1';
 function stringifySourceInfo(sourceType, sourceData) {
     switch(sourceType){

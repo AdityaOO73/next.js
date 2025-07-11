@@ -385,6 +385,23 @@ relativeURL.prototype = URL.prototype;
  */ /* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="../base/globals.d.ts" />
 /// <reference path="../../../shared/runtime-utils.ts" />
 // Used in WebWorkers to tell the runtime about the chunk base path
+var SourceType = /*#__PURE__*/ function(SourceType) {
+    /**
+   * The module was instantiated because it was included in an evaluated chunk's
+   * runtime.
+   * SourceData is a ChunkPath.
+   */ SourceType[SourceType["Runtime"] = 0] = "Runtime";
+    /**
+   * The module was instantiated because a parent module imported it.
+   * SourceData is a ModuleId.
+   */ SourceType[SourceType["Parent"] = 1] = "Parent";
+    /**
+   * The module was instantiated because it was included in a chunk's hot module
+   * update.
+   * SourceData is an array of ModuleIds or undefined.
+   */ SourceType[SourceType["Update"] = 2] = "Update";
+    return SourceType;
+}(SourceType || {});
 const moduleFactories = Object.create(null);
 /**
  * Module IDs that are instantiated as part of the runtime of a chunk.
@@ -645,7 +662,7 @@ class UpdateApplyError extends Error {
 /**
  * Gets or instantiates a runtime module.
  */ // @ts-ignore
-function getOrInstantiateRuntimeModule(moduleId, chunkPath) {
+function getOrInstantiateRuntimeModule(chunkPath, moduleId) {
     const module = devModuleCache[moduleId];
     if (module) {
         if (module.error) {
@@ -654,10 +671,7 @@ function getOrInstantiateRuntimeModule(moduleId, chunkPath) {
         return module;
     }
     // @ts-ignore
-    return instantiateModule(moduleId, {
-        type: SourceType.Runtime,
-        chunkPath
-    });
+    return instantiateModule(moduleId, SourceType.Runtime, chunkPath);
 }
 /**
  * Retrieves a module from the cache, or instantiate it if it is not cached.
@@ -676,10 +690,7 @@ const getOrInstantiateModuleFromParent = (id, sourceModule)=>{
         }
         return module;
     }
-    return instantiateModule(id, {
-        type: SourceType.Parent,
-        parentId: sourceModule.id
-    });
+    return instantiateModule(id, SourceType.Parent, sourceModule.id);
 };
 function instantiateModule(moduleId, sourceType, sourceData) {
     // We are in development, this is always a string.
@@ -1013,10 +1024,7 @@ function applyPhase(outdatedSelfAcceptedModules, newModuleFactories, outdatedMod
     // Re-instantiate all outdated self-accepted modules.
     for (const { moduleId, errorHandler } of outdatedSelfAcceptedModules){
         try {
-            instantiateModule(moduleId, {
-                type: SourceType.Update,
-                parents: outdatedModuleParents.get(moduleId)
-            });
+            instantiateModule(moduleId, SourceType.Update, outdatedModuleParents.get(moduleId));
         } catch (err) {
             if (typeof errorHandler === 'function') {
                 try {
@@ -1489,7 +1497,7 @@ async function loadWebAssemblyModule(_sourceType, _sourceData, wasmChunkPath, _e
             await Promise.all(params.otherChunks.map((otherChunkData)=>loadChunk(SourceType.Runtime, chunkPath, otherChunkData)));
             if (params.runtimeModuleIds.length > 0) {
                 for (const moduleId of params.runtimeModuleIds){
-                    getOrInstantiateRuntimeModule(moduleId, chunkPath);
+                    getOrInstantiateRuntimeModule(chunkPath, moduleId);
                 }
             }
         },
